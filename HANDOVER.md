@@ -35,9 +35,14 @@ remain in the Windows/control-plane project and on their respective hosts.
 
 ## Access and releases
 
-The shared owner dashboard controls this client independently. In `beta`
-status, a user needs the Omarchy grant. `locked` blocks all Omarchy sessions
-and `live` opens Omarchy to every general beta account.
+SovChat accounts and beta access are shared across Windows, Linux, Omarchy, and
+the web app. A user with SovChat beta access can sign in here without a
+separate Omarchy account or grant.
+
+The shared owner dashboard controls only this client's release gate
+independently. `locked` blocks all Omarchy sessions; `beta` and `live` allow
+any account with shared SovChat beta access. Windows and Linux release states
+have no effect on this client.
 
 The plugin installer accepts only one reviewed AppImage URL, byte count, and
 SHA-512 digest. It refuses redirects, bounds transfer time and size, and
