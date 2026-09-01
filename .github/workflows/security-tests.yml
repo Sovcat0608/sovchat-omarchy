@@ -1,0 +1,26 @@
+name: Security tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    name: Descriptor-safe installer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out reviewed snapshot
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Validate scripts
+        run: |
+          /usr/bin/bash -n bin/sovchat-control
+          /usr/bin/python3 -m py_compile bin/sovchat-safe-install.py
+
+      - name: Run installer security tests
+        run: /usr/bin/python3 -m unittest discover -s tests -v

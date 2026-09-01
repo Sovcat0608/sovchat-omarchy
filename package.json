@@ -1,0 +1,69 @@
+{
+  "name": "sovchat-omarchy",
+  "version": "0.4.5",
+  "sovchatVariant": "omarchy",
+  "description": "SovChat client and native plugin for Omarchy.",
+  "author": "Tyronne Garth Jones <info@sovchat.com> (Kent, UK)",
+  "main": "electron/main.cjs",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10.0.0"
+  },
+  "packageManager": "npm@11.11.0",
+  "scripts": {
+    "dev": "npm run dev:desktop",
+    "dev:web": "node scripts/dev-web.mjs",
+    "dev:desktop": "node scripts/electron-dev.mjs",
+    "dev:layout-test": "node --env-file=.env.example --env-file=.env.local --env-file=tests/layout-test.env scripts/dev-web.mjs",
+    "build:meta": "node scripts/write-build-meta.mjs && node scripts/write-release-highlights.mjs",
+    "build": "npm run build:desktop",
+    "build:desktop": "node scripts/build-desktop.mjs",
+    "start:desktop": "electron .",
+    "dist:omarchy": "node scripts/dist-linux.mjs",
+    "test:audio": "node --no-warnings --experimental-strip-types --test --test-isolation=none tests/voice-join-policy.test.mts tests/audio-diagnostics-policy.test.mts tests/audio-settings-store.test.mts tests/local-noise-filter.test.cjs",
+    "test:livekit": "node --no-warnings --experimental-strip-types --test --test-isolation=none tests/livekit-service-errors.test.mts tests/livekit-client-endpoint.test.mts tests/livekit-client-diagnostics.test.mts",
+    "test:diagnostics": "node --test --test-isolation=none tests/client-diagnostics-privacy.test.cjs",
+    "test:desktop-compat": "node --no-warnings --experimental-strip-types --test --test-isolation=none tests/desktop-version-compat.test.mts",
+    "test:desktop-security": "node --test --test-isolation=none tests/desktop-permission-policy.test.cjs tests/desktop-presence-lifecycle.test.cjs",
+    "test:desktop-updates": "node --test --test-isolation=none tests/desktop-update-policy.test.cjs tests/desktop-update-legacy-compat.test.cjs",
+    "test:linux-package": "node --test --test-isolation=none tests/linux-package-policy.test.cjs tests/linux-display-policy.test.cjs tests/linux-window-control.test.cjs",
+    "test:plugin-security": "python -m unittest discover -s tests -p test_safe_install.py -v",
+    "test:build-pipeline": "node --test --test-isolation=none tests/build-pipeline-performance.test.mjs",
+    "test:layout": "node --no-warnings --experimental-strip-types --test --test-isolation=none tests/compact-layout.test.mts",
+    "test:layout:visual": "electron tests/electron-compact-visual.cjs"
+  },
+  "dependencies": {
+    "@sapphi-red/web-noise-suppressor": "^0.4.0",
+    "clsx": "2.1.1",
+    "electron-updater": "^6.8.9",
+    "framer-motion": "^12.38.0",
+    "livekit-client": "2.22.1",
+    "lucide-react": "0.542.0",
+    "next": "^15.5.23",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "tailwind-merge": "3.3.1",
+    "zod": "4.1.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.1.12",
+    "@types/node": "24.3.0",
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.7",
+    "dotenv": "^17.4.2",
+    "electron": "44.0.0",
+    "electron-builder": "26.15.7",
+    "js-yaml": "^5.2.3",
+    "tailwindcss": "4.1.12",
+    "typescript": "5.9.2"
+  },
+  "overrides": {
+    "js-yaml": "^5.2.3",
+    "lodash": "^4.18.1",
+    "nanoid": "^3.3.18",
+    "postcss": "^8.5.26",
+    "sharp": "^0.35.3",
+    "tar": "^7.5.22"
+  }
+}

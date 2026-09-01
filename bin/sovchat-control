@@ -1,0 +1,296 @@
+#!/usr/bin/bash
+
+set -u
+
+readonly PROCESS_NAME="SovChatOmarchy"
+readonly CLIENT_VERSION="0.4.5"
+readonly CLIENT_ARTIFACT="SovChat-Omarchy-0.4.5-x86_64.AppImage"
+readonly CLIENT_URL="https://sovchat.com/desktop-updates/omarchy/SovChat-Omarchy-0.4.5-x86_64.AppImage"
+readonly CLIENT_RELEASE_READY="false"
+readonly CLIENT_SHA512_HEX=""
+readonly CLIENT_EXPECTED_BYTES=""
+readonly CLIENT_MAX_BYTES="268435456"
+readonly INSTALL_DIR="${HOME}/.local/opt/sovchat-omarchy"
+readonly INSTALL_TARGET="${INSTALL_DIR}/SovChat-Omarchy.AppImage"
+readonly VERSION_FILE="${INSTALL_DIR}/VERSION"
+readonly SCRIPT_SOURCE="${BASH_SOURCE[0]-$0}"
+readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${SCRIPT_SOURCE}")" && pwd)"
+readonly PLUGIN_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+readonly SAFE_INSTALLER="${SCRIPT_DIR}/sovchat-safe-install.py"
+readonly CURL_BIN="/usr/bin/curl"
+readonly PYTHON_BIN="/usr/bin/python3"
+
+sanitize_field() {
+  local value="${1:-}"
+  value="${value//$'\t'/ }"
+  value="${value//$'\r'/ }"
+  value="${value//$'\n'/ }"
+  printf '%s' "${value}"
+}
+
+expand_home() {
+  local value="${1:-}"
+  if [[ "${value}" == "~/"* ]]; then
+    printf '%s\n' "${HOME}/${value:2}"
+  else
+    printf '%s\n' "${value}"
+  fi
+}
+
+usable_launcher() {
+  [[ -n "${1:-}" && -f "${1}" && -x "${1}" ]]
+}
+
+find_launcher() {
+  local override="${1:-}"
+  local candidate=""
+
+  if [[ -n "${override}" ]]; then
+    candidate="$(expand_home "${override}")"
+    if usable_launcher "${candidate}"; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  fi
+
+  local known_candidates=(
+    "${INSTALL_TARGET}"
+    "${HOME}/.local/bin/SovChatOmarchy"
+    "${HOME}/.local/bin/sovchat-omarchy"
+    "${HOME}/.local/share/SovChatOmarchy/SovChatOmarchy"
+    "/opt/SovChatOmarchy/SovChatOmarchy"
+  )
+
+  for candidate in "${known_candidates[@]}"; do
+    if usable_launcher "${candidate}"; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done
+
+  candidate="$(type -P SovChatOmarchy 2>/dev/null || true)"
+  if usable_launcher "${candidate}"; then
+    printf '%s\n' "${candidate}"
+    return 0
+  fi
+
+  candidate="$(type -P sovchat-omarchy 2>/dev/null || true)"
+  if usable_launcher "${candidate}"; then
+    printf '%s\n' "${candidate}"
+    return 0
+  fi
+
+  shopt -s nullglob
+  local discovered=(
+    "${HOME}"/Applications/SovChat-Omarchy-*.AppImage
+    "${HOME}"/Applications/sovchat-omarchy-*/SovChatOmarchy
+    "${HOME}"/Downloads/SovChat-Omarchy-*.AppImage
+    "${HOME}"/Downloads/sovchat-omarchy-*/SovChatOmarchy
+  )
+  shopt -u nullglob
+
+  if ((${#discovered[@]} > 0)); then
+    while IFS= read -r candidate; do
+      if usable_launcher "${candidate}"; then
+        printf '%s\n' "${candidate}"
+        return 0
+      fi
+    done < <(printf '%s\n' "${discovered[@]}" | sort -Vr)
+  fi
+
+  return 1
+}
+
+client_running() {
+  if command -v pgrep >/dev/null 2>&1; then
+    pgrep -x "${PROCESS_NAME}" >/dev/null 2>&1 && return 0
+    pgrep -f '(^|/)(SovChatOmarchy|SovChat-Omarchy-[^/[:space:]]*\.AppImage)([[:space:]]|$)' >/dev/null 2>&1 && return 0
+  fi
+
+  ps -eo comm= 2>/dev/null | awk -v name="${PROCESS_NAME}" '$1 == name { found = 1 } END { exit(found ? 0 : 1) }'
+}
+
+detect_version() {
+  local launcher="${1:-}"
+  local candidate=""
+
+  if [[ "${launcher}" == "${INSTALL_TARGET}" && -r "${VERSION_FILE}" ]]; then
+    candidate="$(head -n 1 "${VERSION_FILE}" 2>/dev/null || true)"
+  fi
+
+  if [[ -z "${candidate}" ]]; then
+    local base="$(basename -- "${launcher}")"
+    local parent="$(basename -- "$(dirname -- "${launcher}")")"
+    if [[ "${base}" =~ SovChat-Omarchy-([0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?)-x86_64\.AppImage$ ]]; then
+      candidate="${BASH_REMATCH[1]}"
+    elif [[ "${parent}" =~ ^sovchat-([0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?)$ ]]; then
+      candidate="${BASH_REMATCH[1]}"
+    fi
+  fi
+
+  sanitize_field "${candidate}"
+}
+
+print_status() {
+  local override="${1:-}"
+  local launcher=""
+  local installed=0
+  local running=0
+  local version=""
+
+  if launcher="$(find_launcher "${override}")"; then
+    installed=1
+    version="$(detect_version "${launcher}")"
+  fi
+  if client_running; then
+    running=1
+  fi
+
+  printf '%s\t%s\t%s\t%s\n' \
+    "${installed}" \
+    "${running}" \
+    "$(sanitize_field "${version}")" \
+    "$(sanitize_field "${launcher}")"
+}
+
+focus_running_client() {
+  command -v hyprctl >/dev/null 2>&1 || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+
+  local address=""
+  local active_workspace=""
+  local client_record=""
+  local workspace=""
+  client_record="$(hyprctl clients -j 2>/dev/null | jq -r '
+    [ .[]
+      | select(
+          [(.class // ""), (.initialClass // "")]
+          | map(ascii_downcase)
+          | any(. == "sovchatomarchy" or . == "com.sovchat.omarchy")
+        )
+    ]
+    | sort_by(if ((.workspace.name // "") | startswith("special:")) then 0 else 1 end)
+    | .[0]
+    | if . then [(.address // ""), (.workspace.name // "")] | @tsv else empty end
+  ' 2>/dev/null || true)"
+
+  IFS=$'\t' read -r address workspace <<< "${client_record}"
+  [[ "${address}" =~ ^0x[0-9A-Fa-f]+$ ]] || return 1
+
+  if [[ "${workspace}" == special:* ]]; then
+    active_workspace="$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id // empty' 2>/dev/null || true)"
+    if [[ "${active_workspace}" =~ ^[1-9][0-9]*$ ]]; then
+      hyprctl dispatch \
+        "hl.dsp.window.move({ window = \"address:${address}\", workspace = \"${active_workspace}\", follow = false })" \
+        >/dev/null 2>&1 || \
+        hyprctl dispatch movetoworkspacesilent "${active_workspace},address:${address}" >/dev/null 2>&1 || true
+    fi
+  fi
+
+  hyprctl dispatch "hl.dsp.focus({ window = \"address:${address}\" })" >/dev/null 2>&1 || \
+    hyprctl dispatch focuswindow "address:${address}" >/dev/null 2>&1
+}
+
+launch_client() {
+  local override="${1:-}"
+  local launcher=""
+
+  if client_running && focus_running_client; then
+    return 0
+  fi
+
+  if ! launcher="$(find_launcher "${override}")"; then
+    printf 'SovChat client not found. Install it from the plugin panel or configure an absolute executable path.\n' >&2
+    return 3
+  fi
+
+  if command -v uwsm-app >/dev/null 2>&1; then
+    setsid -f uwsm-app -- "${launcher}" >/dev/null 2>&1 < /dev/null
+  else
+    setsid -f "${launcher}" >/dev/null 2>&1 < /dev/null
+  fi
+}
+
+install_client() {
+  set -euo pipefail
+
+  [[ -x "${CURL_BIN}" ]] || {
+    printf 'Required Omarchy runtime is missing: %s\n' "${CURL_BIN}" >&2
+    return 4
+  }
+  [[ -x "${PYTHON_BIN}" ]] || {
+    printf 'Required Omarchy runtime is missing: %s\n' "${PYTHON_BIN}" >&2
+    return 4
+  }
+  [[ -f "${SAFE_INSTALLER}" && ! -L "${SAFE_INSTALLER}" ]] || {
+    printf 'The bundled SovChat secure installer is missing or redirected.\n' >&2
+    return 4
+  }
+
+  [[ "${CLIENT_RELEASE_READY}" == "true" ]] || {
+    printf 'The first independent SovChat Omarchy client release is not published yet.\n' >&2
+    return 6
+  }
+
+  [[ "${CLIENT_URL}" == "https://sovchat.com/desktop-updates/omarchy/${CLIENT_ARTIFACT}" ]] || {
+    printf 'The reviewed SovChat download URL is invalid.\n' >&2
+    return 4
+  }
+  [[ "${CLIENT_ARTIFACT}" == "SovChat-Omarchy-${CLIENT_VERSION}-x86_64.AppImage" ]] || {
+    printf 'The reviewed SovChat artifact name is invalid.\n' >&2
+    return 4
+  }
+  [[ "${CLIENT_SHA512_HEX}" =~ ^[0-9a-f]{128}$ ]] || {
+    printf 'The reviewed SovChat checksum is invalid.\n' >&2
+    return 4
+  }
+  [[ "${CLIENT_EXPECTED_BYTES}" =~ ^[0-9]+$ ]] || {
+    printf 'The reviewed SovChat artifact size is invalid.\n' >&2
+    return 4
+  }
+
+  printf 'Downloading reviewed SovChat %s...\n' "${CLIENT_VERSION}"
+  if ! "${CURL_BIN}" --proto '=https' --proto-redir '=https' --tlsv1.2 \
+    --fail --silent --show-error \
+    --max-redirs 0 \
+    --connect-timeout 10 \
+    --max-time 300 \
+    --speed-limit 1024 \
+    --speed-time 30 \
+    --max-filesize "${CLIENT_MAX_BYTES}" \
+    --output - \
+    "${CLIENT_URL}" | \
+    "${PYTHON_BIN}" "${SAFE_INSTALLER}" \
+      --version "${CLIENT_VERSION}" \
+      --expected-bytes "${CLIENT_EXPECTED_BYTES}" \
+      --maximum-bytes "${CLIENT_MAX_BYTES}" \
+      --sha512 "${CLIENT_SHA512_HEX}" \
+      --icon "${PLUGIN_DIR}/sovchat.svg"; then
+    printf 'The reviewed SovChat client was not installed.\n' >&2
+    return 5
+  fi
+
+  if ! ldconfig -p 2>/dev/null | grep -q 'libfuse\.so\.2'; then
+    printf '\nAppImage note: install FUSE 2 once with `omarchy pkg add fuse2` if SovChat does not open.\n'
+  fi
+}
+
+usage() {
+  printf 'Usage: %s {status|launch|install} [executable]\n' "${0##*/}" >&2
+}
+
+case "${1:-}" in
+  status)
+    print_status "${2:-}"
+    ;;
+  launch)
+    launch_client "${2:-}"
+    ;;
+  install)
+    install_client
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac

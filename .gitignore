@@ -1,0 +1,102 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage
+*.lcov
+.nyc_output
+
+# Dependency directories
+node_modules/
+bower_components
+jspm_packages/
+web_modules/
+
+# Build outputs and caches
+.next
+prebuilt
+out
+dist
+release
+.nuxt
+.svelte-kit/
+.docusaurus
+.serverless/
+.fusebox/
+.firebase/
+.cache
+.parcel-cache
+.temp
+__pycache__/
+*.py[cod]
+**/.vitepress/dist
+**/.vitepress/cache
+
+# TypeScript / tooling
+lib/generated/prisma/
+*.tsbuildinfo
+.npm
+.npm-cache/
+.eslintcache
+.stylelintcache
+.tern-port
+.vscode-test
+
+# Yarn
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.yarn-integrity
+
+# Package artifacts
+*.tgz
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Environment files
+.env
+.env.*
+!.env.example
+sign.env
+!sign.env.example
+deploy.env
+!deploy.env.example
+admin.env
+ssh.env
+
+# Local operator handover material
+MIGRATION_RUNBOOK.md
+*.crt
+
+# Private package/signing/SSH material
+.npmrc
+*.pfx
+*.p12
+*.pem
+*.key
+*.ppk
+id_rsa
+id_ed25519
+codex_hostinger_vps
+
+# Local database
+prisma/dev.db
+prisma/dev.db-journal

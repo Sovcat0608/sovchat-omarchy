@@ -1,0 +1,86 @@
+name: Build Omarchy client
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-omarchy-client-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Omarchy AppImage and plugin checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+          package-manager-cache: true
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Pin production client endpoints
+        run: |
+          printf '%s\n' \
+            'NEXT_PUBLIC_LIVEKIT_URL=wss://livekit.sovchat.com' \
+            'SOVCHAT_API_BASE_URL=https://sovchat.com' \
+            'SOVCHAT_PUBLIC_APP_URL=https://sovchat.com' \
+            'SOVCHAT_UPDATE_FEED_URL=https://sovchat.com/desktop-updates/omarchy' \
+            > .env.local
+
+      - name: Test Omarchy boundaries and installer
+        run: |
+          npm run test:linux-package
+          npm run test:build-pipeline
+          npm run test:layout
+          npm run test:plugin-security
+
+      - name: Build Omarchy packages
+        run: npm run dist:omarchy
+
+      - name: Verify packaged endpoint and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          appimages=(release/omarchy/SovChat-Omarchy-*-x86_64.AppImage)
+          archives=(release/omarchy/*.tar.gz)
+          test "${#appimages[@]}" -eq 1
+          test "${#archives[@]}" -eq 1
+
+          chmod +x "${appimages[0]}"
+          inspection_dir="$(mktemp -d)"
+          trap 'rm -rf -- "$inspection_dir" squashfs-root' EXIT
+          "${appimages[0]}" --appimage-extract >/dev/null
+          node node_modules/@electron/asar/bin/asar.js extract \
+            squashfs-root/resources/app.asar "$inspection_dir/app"
+
+          grep -R -a -q 'livekit.sovchat.com' "$inspection_dir/app/electron/renderer"
+          grep -R -a -q 'X-SovChat-App-Variant' "$inspection_dir/app/electron"
+          sha512sum "${appimages[0]}" "${archives[0]}" > release/omarchy/SHA512SUMS
+
+      - name: Upload verified Omarchy packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sovchat-omarchy-${{ github.sha }}
+          path: |
+            release/omarchy/SovChat-Omarchy-*-x86_64.AppImage
+            release/omarchy/*.tar.gz
+            release/omarchy/SHA512SUMS
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
