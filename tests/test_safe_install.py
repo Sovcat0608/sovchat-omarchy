@@ -36,9 +36,9 @@ class ReviewedSnapshotTests(unittest.TestCase):
             control,
             r'readonly CLIENT_URL="https://sovchat\.com/desktop-updates/omarchy/SovChat-Omarchy-0\.4\.7-x86_64\.AppImage"',
         )
-        self.assertRegex(control, r'readonly CLIENT_RELEASE_READY="false"')
-        self.assertRegex(control, r'readonly CLIENT_EXPECTED_BYTES=""')
-        self.assertRegex(control, r'readonly CLIENT_SHA512_HEX=""')
+        self.assertRegex(control, r'readonly CLIENT_RELEASE_READY="true"')
+        self.assertRegex(control, r'readonly CLIENT_EXPECTED_BYTES="129110268"')
+        self.assertRegex(control, r'readonly CLIENT_SHA512_HEX="48540f5f2f0882990dd6e1ccc5f8eb7c2c60efe65f14a426e40593561e3ff82d3a36f8184f8a4007cf37ecc3cee1e6180a255f83a222eb3792c18b3aae7aa229"')
         self.assertNotIn("${INSTALL_TARGET}.new", control)
         self.assertNotRegex(control, re.compile(r"\binstall\s+-[dm]"))
         self.assertNotIn("--location", control)
