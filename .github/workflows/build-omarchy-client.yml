@@ -88,7 +88,13 @@ jobs:
           grep -R -a -q 'livekit.sovchat.com' "$inspection_dir/app/electron/renderer"
           grep -R -a -q 'X-SovChat-App-Variant' "$inspection_dir/app/electron"
           grep -F -q 'https://sovchat.com/desktop-updates/omarchy' squashfs-root/resources/app-update.yml
-          sha512sum "${appimages[0]}" "${archives[0]}" "$manifest" > release/omarchy/SHA512SUMS
+          (
+            cd release/omarchy
+            sha512sum -- \
+              "${appimages[0]##*/}" \
+              "${archives[0]##*/}" \
+              "${manifest##*/}" > SHA512SUMS
+          )
           npm run verify:omarchy-release
 
       - name: Upload verified Omarchy packages

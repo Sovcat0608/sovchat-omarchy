@@ -8,7 +8,7 @@ const {
   resolveDesktopUpdatePolicy
 } = require("../electron/update-policy.cjs");
 
-const RELEASE_VERSION = "0.4.6";
+const RELEASE_VERSION = "0.4.7";
 
 function shouldReceiveLatestManifestPing(currentVersion, manifestVersion) {
   const policy = resolveDesktopUpdatePolicy({ isPackaged: true });
@@ -35,8 +35,8 @@ async function actualUpdaterAccepts(currentVersion, manifestVersion) {
   return updater.isUpdateAvailable({ version: manifestVersion });
 }
 
-test("the latest-linux manifest pings existing 0.4.4 and 0.4.5 clients", () => {
-  for (const currentVersion of ["0.4.4", "0.4.5"]) {
+test("the latest-linux manifest pings existing 0.4.4 through 0.4.6 clients", () => {
+  for (const currentVersion of ["0.4.4", "0.4.5", "0.4.6"]) {
     assert.equal(
       shouldReceiveLatestManifestPing(currentVersion, RELEASE_VERSION),
       true,
@@ -45,15 +45,15 @@ test("the latest-linux manifest pings existing 0.4.4 and 0.4.5 clients", () => {
   }
 });
 
-test("an installed 0.4.6 client does not ping itself", () => {
+test("an installed 0.4.7 client does not ping itself", () => {
   assert.equal(
     shouldReceiveLatestManifestPing(RELEASE_VERSION, RELEASE_VERSION),
     false
   );
 });
 
-test("electron-updater accepts 0.4.6 for every older Omarchy client", async () => {
-  for (const currentVersion of ["0.4.4", "0.4.5", "0.4.6-preview.1"]) {
+test("electron-updater accepts 0.4.7 for every older Omarchy client", async () => {
+  for (const currentVersion of ["0.4.4", "0.4.5", "0.4.6", "0.4.7-preview.1"]) {
     assert.equal(
       await actualUpdaterAccepts(currentVersion, RELEASE_VERSION),
       true,
@@ -62,5 +62,5 @@ test("electron-updater accepts 0.4.6 for every older Omarchy client", async () =
   }
 
   assert.equal(await actualUpdaterAccepts(RELEASE_VERSION, RELEASE_VERSION), false);
-  assert.equal(await actualUpdaterAccepts("0.4.7", RELEASE_VERSION), false);
+  assert.equal(await actualUpdaterAccepts("0.4.8", RELEASE_VERSION), false);
 });

@@ -1,6 +1,6 @@
 {
   "name": "sovchat-omarchy",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "sovchatVariant": "omarchy",
   "description": "SovChat client and native plugin for Omarchy.",
   "author": "Tyronne Garth Jones <info@sovchat.com> (Kent, UK)",

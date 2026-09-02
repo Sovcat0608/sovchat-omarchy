@@ -113,7 +113,7 @@ test("public AppImage verification hashes incrementally and enforces exact bytes
 test("promotion orders the immutable AppImage before the mutable manifest", () => {
   const config = { updateDir: "/opt/sovchat/static/desktop-updates/omarchy" };
   const release = {
-    appImage: { name: "SovChat-Omarchy-0.4.6-x86_64.AppImage", sha512Hex: "a", size: 1 },
+    appImage: { name: "SovChat-Omarchy-0.4.7-x86_64.AppImage", sha512Hex: "a", size: 1 },
     manifest: { name: "latest-linux.yml", sha512Hex: "b", size: 1 }
   };
   const script = buildPromotionScript(config, "publish-id", release);
@@ -126,7 +126,7 @@ test("cleanup only removes a lock owned by the current publish", () => {
     { updateDir: "/opt/sovchat/static/desktop-updates/omarchy" },
     "publish-id",
     {
-      appImage: { name: "SovChat-Omarchy-0.4.6-x86_64.AppImage" },
+      appImage: { name: "SovChat-Omarchy-0.4.7-x86_64.AppImage" },
       manifest: { name: "latest-linux.yml" }
     }
   );

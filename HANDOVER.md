@@ -18,7 +18,7 @@ for this client's static update-feed directory.
 - App ID: `com.sovchat.omarchy`
 - Executable: `SovChatOmarchy`
 - Client update feed: `https://sovchat.com/desktop-updates/omarchy`
-- Client version: `0.4.6`
+- Client version: `0.4.7`
 - Plugin ID: `com.sovchat.omarchy`
 - Plugin version: `0.1.4`
 - GitHub repository: `https://github.com/Sovcat0608/sovchat-omarchy`

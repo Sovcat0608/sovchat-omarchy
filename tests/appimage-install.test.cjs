@@ -68,12 +68,12 @@ test("startup atomically synchronizes the managed AppImage version", () => {
       isPackaged: true,
       appImagePath,
       homeDirectory,
-      version: "0.4.6",
+      version: "0.4.7",
       randomBytes: () => Buffer.from("123456789abc", "hex")
     });
 
     assert.equal(result.status, "synced");
-    assert.equal(fs.readFileSync(path.join(installDirectory, "VERSION"), "ascii"), "0.4.6\n");
+    assert.equal(fs.readFileSync(path.join(installDirectory, "VERSION"), "ascii"), "0.4.7\n");
     assert.deepEqual(
       fs.readdirSync(installDirectory).sort(),
       ["SovChat-Omarchy.AppImage", "VERSION"]
@@ -101,7 +101,7 @@ test("startup refuses a redirected version sidecar", { skip: process.platform ==
       isPackaged: true,
       appImagePath,
       homeDirectory,
-      version: "0.4.6"
+      version: "0.4.7"
     });
 
     assert.equal(result.status, "failed");

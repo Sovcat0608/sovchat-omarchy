@@ -30,11 +30,11 @@ class ReviewedSnapshotTests(unittest.TestCase):
         control = (plugin_root / "bin/sovchat-control").read_text(encoding="utf-8")
 
         self.assertEqual(manifest["version"], "0.1.4")
-        self.assertRegex(control, r'readonly CLIENT_VERSION="0\.4\.6"')
-        self.assertRegex(control, r'readonly CLIENT_ARTIFACT="SovChat-Omarchy-0\.4\.6-x86_64\.AppImage"')
+        self.assertRegex(control, r'readonly CLIENT_VERSION="0\.4\.7"')
+        self.assertRegex(control, r'readonly CLIENT_ARTIFACT="SovChat-Omarchy-0\.4\.7-x86_64\.AppImage"')
         self.assertRegex(
             control,
-            r'readonly CLIENT_URL="https://sovchat\.com/desktop-updates/omarchy/SovChat-Omarchy-0\.4\.6-x86_64\.AppImage"',
+            r'readonly CLIENT_URL="https://sovchat\.com/desktop-updates/omarchy/SovChat-Omarchy-0\.4\.7-x86_64\.AppImage"',
         )
         self.assertRegex(control, r'readonly CLIENT_RELEASE_READY="false"')
         self.assertRegex(control, r'readonly CLIENT_EXPECTED_BYTES=""')

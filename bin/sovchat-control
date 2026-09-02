@@ -3,9 +3,9 @@
 set -u
 
 readonly PROCESS_NAME="SovChatOmarchy"
-readonly CLIENT_VERSION="0.4.6"
-readonly CLIENT_ARTIFACT="SovChat-Omarchy-0.4.6-x86_64.AppImage"
-readonly CLIENT_URL="https://sovchat.com/desktop-updates/omarchy/SovChat-Omarchy-0.4.6-x86_64.AppImage"
+readonly CLIENT_VERSION="0.4.7"
+readonly CLIENT_ARTIFACT="SovChat-Omarchy-0.4.7-x86_64.AppImage"
+readonly CLIENT_URL="https://sovchat.com/desktop-updates/omarchy/SovChat-Omarchy-0.4.7-x86_64.AppImage"
 readonly CLIENT_RELEASE_READY="false"
 readonly CLIENT_SHA512_HEX=""
 readonly CLIENT_EXPECTED_BYTES=""
