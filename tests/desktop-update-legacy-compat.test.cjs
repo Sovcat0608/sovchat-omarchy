@@ -35,7 +35,7 @@ async function actualUpdaterAccepts(currentVersion, manifestVersion) {
   return updater.isUpdateAvailable({ version: manifestVersion });
 }
 
-test("the latest-linux manifest pings existing 0.4.4 through 0.4.6 clients", () => {
+test("the latest-linux manifest pings older clients already configured for the Omarchy feed", () => {
   for (const currentVersion of ["0.4.4", "0.4.5", "0.4.6"]) {
     assert.equal(
       shouldReceiveLatestManifestPing(currentVersion, RELEASE_VERSION),
@@ -52,7 +52,7 @@ test("an installed 0.4.7 client does not ping itself", () => {
   );
 });
 
-test("electron-updater accepts 0.4.7 for every older Omarchy client", async () => {
+test("electron-updater accepts 0.4.7 for every older client on the Omarchy feed", async () => {
   for (const currentVersion of ["0.4.4", "0.4.5", "0.4.6", "0.4.7-preview.1"]) {
     assert.equal(
       await actualUpdaterAccepts(currentVersion, RELEASE_VERSION),

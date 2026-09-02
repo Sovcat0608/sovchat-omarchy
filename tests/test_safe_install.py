@@ -7,6 +7,7 @@ import json
 import os
 import re
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -28,6 +29,8 @@ class ReviewedSnapshotTests(unittest.TestCase):
         plugin_root = HELPER_PATH.parents[1]
         manifest = json.loads((plugin_root / "manifest.json").read_text(encoding="utf-8"))
         control = (plugin_root / "bin/sovchat-control").read_text(encoding="utf-8")
+        widget = (plugin_root / "BarWidget.qml").read_text(encoding="utf-8")
+        panel = (plugin_root / "Panel.qml").read_text(encoding="utf-8")
 
         self.assertEqual(manifest["version"], "0.1.4")
         self.assertRegex(control, r'readonly CLIENT_VERSION="0\.4\.7"')
@@ -42,6 +45,130 @@ class ReviewedSnapshotTests(unittest.TestCase):
         self.assertNotIn("${INSTALL_TARGET}.new", control)
         self.assertNotRegex(control, re.compile(r"\binstall\s+-[dm]"))
         self.assertNotIn("--location", control)
+        self.assertIn('readonly LEGACY_INSTALL_TARGET="${LEGACY_INSTALL_DIR}/SovChat.AppImage"', control)
+        self.assertIn('probeProcess.command = ["bash", helperPath, "status-v2", executableOverride]', widget)
+        self.assertIn('replace(/[\\r\\n]+$/, "").split("\\n")', widget)
+        self.assertNotIn('.trim().split("\\n")', widget)
+        self.assertIn('"STANDALONE FOUND"', panel)
+        self.assertIn('"INSTALL OMARCHY EDITION"', panel)
+        self.assertIn('text: "PLUGIN 0.1.4"', panel)
+        self.assertIn("fields.length === 7", widget)
+        self.assertIn('(fields[0] === "1") === (fields[3] !== "")', widget)
+        self.assertIn('(fields[4] === "1") === (fields[6] !== "")', widget)
+        self.assertIn('readonly property bool statusReady: probed && !probing && lastError === ""', widget)
+        self.assertIn('[[ "${candidate}" == "${LEGACY_INSTALL_TARGET}" ]] && return 0', control)
+        self.assertIn("legacyClientInstalled && !clientInstalled && !clientRunning", widget)
+        self.assertIn("The SovChat plugin update is incomplete.", widget)
+        self.assertIn("enabled: !root.busy && root.actionsReady", panel)
+        self.assertIn("migrationRequired && hostWidget ? hostWidget.legacyClientPath", panel)
+
+
+@unittest.skipUnless(sys.platform.startswith("linux"), "Linux process and inode semantics required")
+class LegacyClientMigrationStatusTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="sovchat-legacy-status-")
+        self.root = Path(self.temporary.name)
+        self.home = self.root / "home"
+        self.home.mkdir(mode=0o700)
+        self.control = HELPER_PATH.with_name("sovchat-control")
+        self.legacy_marker = self.root / "legacy-executed"
+        self.new_marker = self.root / "omarchy-executed"
+        self.fake_bin = self.root / "fake-bin"
+        self.fake_bin.mkdir(mode=0o700)
+        for command_name in ("pgrep", "ps", "hyprctl"):
+            stub = self.fake_bin / command_name
+            stub.write_text("#!/usr/bin/bash\nexit 1\n", encoding="ascii")
+            stub.chmod(0o700)
+
+    def tearDown(self):
+        self.temporary.cleanup()
+
+    def make_executable(self, path, marker):
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        path.write_text(f"#!/usr/bin/bash\nprintf 'executed\\n' >> '{marker}'\n", encoding="utf-8")
+        path.chmod(0o700)
+        return path
+
+    def make_legacy_client(self):
+        target = self.make_executable(
+            self.home / ".local/opt/sovchat/SovChat.AppImage",
+            self.legacy_marker,
+        )
+        (target.parent / "VERSION").write_text("0.4.5\n", encoding="ascii")
+        return target
+
+    def make_omarchy_client(self):
+        target = self.make_executable(
+            self.home / ".local/opt/sovchat-omarchy/SovChat-Omarchy.AppImage",
+            self.new_marker,
+        )
+        (target.parent / "VERSION").write_text("0.4.7\n", encoding="ascii")
+        return target
+
+    def run_helper(self, action, override=None):
+        command = ["/usr/bin/bash", str(self.control), action]
+        if override is not None:
+            command.append(str(override))
+        environment = os.environ.copy()
+        environment["HOME"] = str(self.home)
+        environment["PATH"] = f"{self.fake_bin}:/usr/bin:/bin"
+        return subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            env=environment,
+            timeout=5,
+        )
+
+    def status_fields(self, action="status-v2", override=None):
+        result = self.run_helper(action, override)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.rstrip("\n").split("\t")
+
+    def test_four_field_status_remains_compatible_and_v2_reports_legacy(self):
+        legacy = self.make_legacy_client()
+
+        self.assertEqual(self.status_fields("status"), ["0", "0", "", ""])
+        self.assertEqual(
+            self.status_fields(),
+            ["0", "0", "", "", "1", "0.4.5", str(legacy)],
+        )
+        self.assertFalse(self.legacy_marker.exists())
+
+    def test_exact_symlink_and_hardlink_legacy_overrides_are_rejected(self):
+        legacy = self.make_legacy_client()
+        symlink = self.root / "legacy-symlink"
+        hardlink = self.root / "legacy-hardlink"
+        symlink.symlink_to(legacy)
+        os.link(legacy, hardlink)
+
+        for candidate in (legacy, symlink, hardlink):
+            with self.subTest(candidate=candidate):
+                fields = self.status_fields(override=candidate)
+                self.assertEqual(fields[0], "0")
+                self.assertEqual(fields[4], "1")
+                result = self.run_helper("launch", candidate)
+                self.assertEqual(result.returncode, 3)
+
+        self.assertFalse(self.legacy_marker.exists())
+
+    def test_managed_client_wins_when_legacy_override_is_saved(self):
+        legacy = self.make_legacy_client()
+        managed = self.make_omarchy_client()
+
+        fields = self.status_fields(override=legacy)
+        self.assertEqual(fields, ["1", "0", "0.4.7", str(managed), "1", "0.4.5", str(legacy)])
+        self.assertFalse(self.legacy_marker.exists())
+        self.assertFalse(self.new_marker.exists())
+
+    def test_nonlegacy_custom_override_remains_supported(self):
+        custom = self.make_executable(self.root / "custom-client", self.new_marker)
+        fields = self.status_fields(override=custom)
+        self.assertEqual(fields[0], "1")
+        self.assertEqual(fields[3], str(custom))
+        self.assertEqual(fields[4], "0")
+        self.assertFalse(self.new_marker.exists())
 
 
 @unittest.skipUnless(sys.platform.startswith("linux"), "Linux filesystem semantics required")
@@ -84,6 +211,21 @@ class SafeInstallerTests(unittest.TestCase):
         )
         desktop = self.home / ".local/share/applications/com.sovchat.omarchy.desktop"
         self.assertIn(f'Exec="{target}"', desktop.read_text(encoding="utf-8"))
+
+    def test_install_preserves_legacy_client_bytes_and_metadata(self):
+        legacy = self.home / ".local/opt/sovchat/SovChat.AppImage"
+        legacy.parent.mkdir(parents=True, mode=0o700)
+        legacy.write_bytes(b"legacy-client")
+        legacy.chmod(0o700)
+        before = legacy.stat()
+
+        self.install()
+
+        after = legacy.stat()
+        self.assertEqual(legacy.read_bytes(), b"legacy-client")
+        self.assertEqual(after.st_ino, before.st_ino)
+        self.assertEqual(stat.S_IMODE(after.st_mode), stat.S_IMODE(before.st_mode))
+        self.assertEqual(after.st_mtime_ns, before.st_mtime_ns)
 
     def test_checksum_failure_preserves_existing_client(self):
         target = self.home / ".local/opt/sovchat-omarchy/SovChat-Omarchy.AppImage"

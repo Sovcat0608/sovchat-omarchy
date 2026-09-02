@@ -22,6 +22,7 @@ for this client's static update-feed directory.
 - Plugin ID: `com.sovchat.omarchy`
 - Plugin version: `0.1.4`
 - GitHub repository: `https://github.com/Sovcat0608/sovchat-omarchy`
+- Marketplace plugin repository: `https://github.com/Sovcat0608/sovchat-omarchy-plugin`
 
 Every desktop API request identifies this project with
 `X-SovChat-App-Variant: omarchy`.
@@ -50,11 +51,24 @@ SHA-512 digest. It refuses redirects, bounds transfer time and size, and
 publishes files through descriptor-pinned directories without following
 symlinks.
 
-The first independent Omarchy artifact must be built before changing
-`CLIENT_RELEASE_READY` in `bin/sovchat-control` to `true`. At that point,
-pin the exact VPS URL, byte count, and SHA-512 from the same reviewed commit.
-Do not publish the plugin or update a marketplace review while that value is
-`false`.
+Marketplace plugin 0.1.3 and earlier installed
+`~/.local/opt/sovchat/SovChat.AppImage`, which belongs to the generic Linux
+client and checks `/desktop-updates/linux`. Never redirect that feed to the
+Omarchy feed because it also serves independently installed Linux clients.
+
+Plugin 0.1.4 adds a seven-field `status-v2` helper response while preserving
+the original four-field `status` protocol. It detects only the exact legacy
+plugin target, rejects exact-path, symlink, and hardlink attempts to launch it
+as an Omarchy client, and offers a side-by-side Omarchy installation. The
+legacy AppImage itself is never opened, executed, changed, or removed. The
+status helper may read its adjacent `VERSION` marker; the installer never
+writes the legacy directory.
+
+Keep `CLIENT_RELEASE_READY` true only while the URL, byte count, and SHA-512
+in `bin/sovchat-control` match the verified public Omarchy artifact. Set it
+to false before staging a replacement, then restore it only after the new
+public bytes have passed the release verifier. Do not publish the plugin or
+update a marketplace review while that value is false.
 
 ### Publishing a client update
 
@@ -86,6 +100,23 @@ confirmed. Once the public bytes are verified, pin the same AppImage's lowercase
 hex SHA-512 and exact byte count in `bin/sovchat-control`, set
 `CLIENT_RELEASE_READY=true`, rerun the security/update suites, and publish the
 plugin revision.
+
+### Publishing a marketplace plugin update
+
+The Omarchy marketplace entry already exists as `com.sovchat.omarchy`; its
+original listing is omacom/omarchy-plugin-marketplace issue 2888. Do not submit
+a second plugin ID.
+
+Sync the reviewed plugin surface into
+`https://github.com/Sovcat0608/sovchat-omarchy-plugin`: `BarWidget.qml`,
+`Panel.qml`, `manifest.json`, `README.md`, `sovchat.svg`,
+`bin/sovchat-control`, `bin/sovchat-safe-install.py`, and
+`tests/test_safe_install.py`. Run that repository's security workflow, then
+open or update a marketplace **Verify / update existing plugin** request pinned
+to the exact passing commit. The marketplace snapshot remains the previous
+version until its maintainers approve and publish the update.
+
+Never point the marketplace entry at this combined client-source repository.
 
 ## Development
 

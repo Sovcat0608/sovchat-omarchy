@@ -20,7 +20,7 @@ modify system configuration.
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/Sovcat0608/sovchat-omarchy.git --enable
+omarchy plugin add https://github.com/Sovcat0608/sovchat-omarchy-plugin.git --enable
 ```
 
 Open the SovChat bar widget and choose **Install client**. The installer accepts
@@ -40,6 +40,15 @@ The installed AppImage checks SovChat's Omarchy-only update feed shortly after
 launch, hourly, and after resume or unlock. It downloads newer stable versions
 in the background and offers **Update now** when ready.
 
+Marketplace plugin 0.1.3 and earlier installed the generic standalone Linux
+client, which uses a different update channel. Plugin 0.1.4 detects that exact
+legacy target and shows **Standalone found**. Choose **Install Omarchy edition**
+to install the independent Omarchy client alongside it. The legacy AppImage is
+not opened, changed, or removed. Once installed, the Omarchy edition receives
+the normal in-app update pings described above.
+
+The standalone Linux update feed must not be redirected to the Omarchy feed.
+
 ## Remove
 
 Remove the Omarchy plugin with:
@@ -56,6 +65,18 @@ rm -rf -- "$HOME/.local/opt/sovchat-omarchy"
 rm -f -- "$HOME/.local/share/applications/com.sovchat.omarchy.desktop"
 rm -f -- "$HOME/.local/share/icons/hicolor/scalable/apps/com.sovchat.omarchy.svg"
 ```
+
+If this machine migrated from marketplace plugin 0.1.3 or earlier, the old
+standalone client may remain alongside the Omarchy edition. After confirming
+the Omarchy edition works, it can be removed separately with:
+
+```bash
+rm -rf -- "$HOME/.local/opt/sovchat"
+rm -f -- "$HOME/.local/share/applications/com.sovchat.desktop.desktop"
+rm -f -- "$HOME/.local/share/icons/hicolor/scalable/apps/com.sovchat.desktop.svg"
+```
+
+Do not run those legacy cleanup commands for a separately managed Linux client.
 
 SovChat connects only to `https://sovchat.com` and
 `wss://livekit.sovchat.com`. The repository is licensed under MIT; see

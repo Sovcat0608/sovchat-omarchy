@@ -20,8 +20,12 @@ Panel {
   readonly property bool running: hostWidget ? hostWidget.clientRunning : false
   readonly property bool probed: hostWidget ? hostWidget.probed : false
   readonly property bool busy: hostWidget ? hostWidget.busy : false
+  readonly property bool actionsReady: hostWidget ? hostWidget.statusReady : false
   readonly property string versionText: hostWidget ? hostWidget.clientVersion : ""
   readonly property string clientPath: hostWidget ? hostWidget.clientPath : ""
+  readonly property bool migrationRequired: hostWidget ? hostWidget.migrationRequired : false
+  readonly property string legacyVersionText: hostWidget ? hostWidget.legacyClientVersion : ""
+  readonly property string displayClientPath: clientPath !== "" ? clientPath : (migrationRequired && hostWidget ? hostWidget.legacyClientPath : "")
   readonly property string errorText: hostWidget
     ? (hostWidget.actionError || hostWidget.lastError)
     : ""
@@ -29,10 +33,10 @@ Panel {
     ? "CHECK FAILED"
     : (!probed
       ? "CHECKING"
-      : (running ? "RUNNING" : (installed ? "READY" : "CLIENT NOT FOUND")))
+      : (running ? "RUNNING" : (installed ? "READY" : (migrationRequired ? "STANDALONE FOUND" : "CLIENT NOT FOUND"))))
   readonly property color stateColor: errorText !== ""
     ? urgent
-    : (running ? accent : (installed ? foreground : muted))
+    : (migrationRequired ? urgent : (running ? accent : (installed ? foreground : muted)))
 
   function launch() {
     if (hostWidget) hostWidget.launchClient()
@@ -157,20 +161,22 @@ Panel {
             width: parent.width
             text: root.errorText !== ""
               ? root.errorText
-              : (root.running
-                ? "The desktop client is active on this session."
-                : (root.installed
-                  ? "The desktop client is installed and ready to open."
-                  : "Install the latest Linux client or continue in the web app."))
+              : (root.migrationRequired
+                ? "This client uses the standalone Linux update channel and cannot receive the Omarchy release. Install the Omarchy edition alongside it. The existing AppImage will not be opened, changed, or removed."
+                : (root.running
+                  ? "The desktop client is active on this session."
+                  : (root.installed
+                    ? "The desktop client is installed and ready to open."
+                    : "Install the latest Omarchy client or continue in the web app.")))
             color: root.errorText !== "" ? root.urgent : root.foreground
             font.family: root.fontFamily
             font.pixelSize: Style.font.body
             wrapMode: Text.Wrap
           }
           Text {
-            visible: root.clientPath !== ""
+            visible: root.displayClientPath !== ""
             width: parent.width
-            text: root.clientPath
+            text: root.displayClientPath
             textFormat: Text.PlainText
             color: root.muted
             font.family: root.fontFamily
@@ -186,15 +192,15 @@ Panel {
             Layout.fillWidth: true
             text: root.running
               ? "FOCUS CLIENT"
-              : (root.installed ? "OPEN CLIENT" : "INSTALL CLIENT")
+              : (root.installed ? "OPEN CLIENT" : (root.migrationRequired ? "INSTALL OMARCHY EDITION" : "INSTALL CLIENT"))
             bordered: true
-            active: root.installed || root.running
+            active: root.installed || root.running || root.migrationRequired
             foreground: root.foreground
             background: "transparent"
             accent: root.accent
             fontFamily: root.fontFamily
             fontSize: Style.font.body
-            enabled: !root.busy
+            enabled: !root.busy && root.actionsReady
             opacity: enabled ? 1.0 : 0.5
             onClicked: root.launch()
           }
@@ -216,13 +222,15 @@ Panel {
           spacing: Style.spacing.controlGap
           Button {
             Layout.fillWidth: true
-            text: root.installed ? "INSTALL / UPDATE" : "RETRY INSTALL"
+            text: root.migrationRequired ? "NOT NOW" : (root.installed ? "INSTALL / UPDATE" : "RETRY INSTALL")
             foreground: root.muted
             background: "transparent"
             accent: root.accent
             fontFamily: root.fontFamily
             fontSize: Style.font.bodySmall
-            onClicked: root.install()
+            enabled: !root.busy && root.actionsReady
+            opacity: enabled ? 1.0 : 0.5
+            onClicked: root.migrationRequired ? root.close() : root.install()
           }
           Button {
             text: root.busy ? "CHECKING" : "REFRESH"
@@ -245,14 +253,16 @@ Panel {
           width: parent.width
           Text {
             Layout.fillWidth: true
-            text: root.versionText !== "" ? "CLIENT " + root.versionText : "CLIENT VERSION UNKNOWN"
+            text: root.versionText !== ""
+              ? "CLIENT " + root.versionText
+              : (root.migrationRequired && root.legacyVersionText !== "" ? "LEGACY CLIENT " + root.legacyVersionText : "CLIENT VERSION UNKNOWN")
             color: root.muted
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
             elide: Text.ElideRight
           }
           Text {
-            text: "PLUGIN 0.1.3"
+            text: "PLUGIN 0.1.4"
             color: root.muted
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption

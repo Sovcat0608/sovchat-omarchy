@@ -27,20 +27,29 @@ BarWidget {
   property bool clientRunning: false
   property string clientVersion: ""
   property string clientPath: ""
+  property bool legacyClientInstalled: false
+  property string legacyClientVersion: ""
+  property string legacyClientPath: ""
   property string lastError: ""
   property string actionError: ""
   property string _probeOutput: ""
   property string _probeError: ""
   property string _actionError: ""
 
-  readonly property string statusLabel: clientRunning
-    ? "RUNNING"
-    : (clientInstalled ? "READY" : "NOT INSTALLED")
-  readonly property string tooltipText: probing && !probed
+  readonly property bool migrationRequired: legacyClientInstalled && !clientInstalled && !clientRunning
+  readonly property bool statusReady: probed && !probing && lastError === ""
+  readonly property string statusLabel: lastError !== ""
+    ? "CHECK FAILED"
+    : (clientRunning ? "RUNNING" : (clientInstalled ? "READY" : (migrationRequired ? "STANDALONE FOUND" : "NOT INSTALLED")))
+  readonly property string tooltipText: probing
     ? "Checking SovChat"
-    : (clientRunning
-      ? "SovChat is running"
-      : (clientInstalled ? "SovChat is ready" : "SovChat client not found"))
+    : (lastError !== ""
+      ? lastError
+      : (clientRunning
+        ? "SovChat is running"
+        : (clientInstalled
+          ? "SovChat is ready"
+          : (migrationRequired ? "Install the Omarchy edition alongside standalone SovChat" : "SovChat client not found"))))
   readonly property bool busy: probing || actionProcess.running
 
   function refresh() {
@@ -48,29 +57,52 @@ BarWidget {
     probing = true
     _probeOutput = ""
     _probeError = ""
-    probeProcess.command = ["bash", helperPath, "status", executableOverride]
+    probeProcess.command = ["bash", helperPath, "status-v2", executableOverride]
     probeProcess.running = true
+  }
+
+  function clearClientState() {
+    clientInstalled = false
+    clientRunning = false
+    clientVersion = ""
+    clientPath = ""
+    legacyClientInstalled = false
+    legacyClientVersion = ""
+    legacyClientPath = ""
   }
 
   function finishProbe(exitCode, stdout, stderr) {
     probing = false
     probed = true
     if (exitCode !== 0) {
-      lastError = conciseError(stderr || stdout, "Could not check the SovChat client")
+      clearClientState()
+      lastError = exitCode === 2
+        ? "The SovChat plugin update is incomplete. Refresh after Omarchy finishes updating the plugin."
+        : conciseError(stderr || stdout, "Could not check the SovChat client")
       return
     }
 
-    var lines = String(stdout || "").trim().split("\n")
+    var lines = String(stdout || "").replace(/[\r\n]+$/, "").split("\n")
     var fields = lines.length > 0 ? lines[lines.length - 1].split("\t") : []
-    if (fields.length < 4) {
-      lastError = "The SovChat status helper returned an unexpected response"
+    var responseValid = fields.length === 7
+      && (fields[0] === "0" || fields[0] === "1")
+      && (fields[1] === "0" || fields[1] === "1")
+      && (fields[4] === "0" || fields[4] === "1")
+      && ((fields[0] === "1") === (fields[3] !== ""))
+      && ((fields[4] === "1") === (fields[6] !== ""))
+    if (!responseValid) {
+      clearClientState()
+      lastError = "The SovChat plugin update is incomplete. Refresh after Omarchy finishes updating the plugin."
       return
     }
 
     clientInstalled = fields[0] === "1"
     clientRunning = fields[1] === "1"
     clientVersion = fields[2]
-    clientPath = fields.slice(3).join("\t")
+    clientPath = fields[3]
+    legacyClientInstalled = fields[4] === "1"
+    legacyClientVersion = fields[5]
+    legacyClientPath = fields[6]
     lastError = ""
   }
 
@@ -80,7 +112,8 @@ BarWidget {
   }
 
   function launchClient() {
-    if (!probed) {
+    if (actionProcess.running) return
+    if (!statusReady) {
       refresh()
       open()
       return
@@ -89,7 +122,6 @@ BarWidget {
       installOrUpdate()
       return
     }
-    if (actionProcess.running) return
     actionError = ""
     _actionError = ""
     actionProcess.command = ["bash", helperPath, "launch", executableOverride]
@@ -105,7 +137,12 @@ BarWidget {
   }
 
   function installOrUpdate() {
-    if (!bar) return
+    if (!bar || actionProcess.running) return
+    if (!statusReady) {
+      refresh()
+      open()
+      return
+    }
     var installCommand = "bash " + Util.shellQuote(helperPath) + " install"
       + "; result=$?; printf '\\n'"
       + "; if [ \"$result\" -eq 0 ]; then printf 'SovChat is ready.\\n'"
@@ -239,6 +276,10 @@ BarWidget {
         running: root.clientRunning,
         version: root.clientVersion,
         path: root.clientPath,
+        migrationRequired: root.migrationRequired,
+        legacyInstalled: root.legacyClientInstalled,
+        legacyVersion: root.legacyClientVersion,
+        legacyPath: root.legacyClientPath,
         error: root.lastError || root.actionError
       })
     }
