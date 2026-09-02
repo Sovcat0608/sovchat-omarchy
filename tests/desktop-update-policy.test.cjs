@@ -3,6 +3,7 @@ const test = require("node:test");
 const semver = require("semver");
 
 const {
+  STABLE_LINUX_X64_UPDATE_MANIFEST_FILE,
   STABLE_UPDATE_MANIFEST_CHANNEL,
   resolveDesktopUpdatePolicy
 } = require("../electron/update-policy.cjs");
@@ -13,6 +14,7 @@ test("packaged WIP variants use the published stable update manifest", () => {
   assert.equal(policy.enabled, true);
   assert.equal(policy.manifestChannel, "latest");
   assert.equal(policy.manifestChannel, STABLE_UPDATE_MANIFEST_CHANNEL);
+  assert.equal(STABLE_LINUX_X64_UPDATE_MANIFEST_FILE, "latest-linux.yml");
   assert.equal(policy.allowDowngrade, false);
 });
 

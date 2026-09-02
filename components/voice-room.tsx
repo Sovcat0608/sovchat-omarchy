@@ -381,6 +381,7 @@ type ScreenShareSourcePickerProps = {
   sources: DesktopDisplayMediaSource[];
   compactMode: boolean;
   includeSystemAudio: boolean;
+  systemAudioSupported: boolean;
   streamQualityMode: StreamQualityMode;
   onToggleIncludeSystemAudio: (nextValue: boolean) => void;
   onStreamQualityModeChange: (nextMode: StreamQualityMode) => void;
@@ -537,7 +538,6 @@ const NOISE_FLOOR_WARNING_WINDOW_MS = 8000;
 const NOISE_FLOOR_WARNING_COOLDOWN_MS = 60_000;
 const STREAM_AFK_STOP_MINUTES = 15;
 const STREAM_AFK_STOP_MS = STREAM_AFK_STOP_MINUTES * 60 * 1000;
-const SCREEN_SHARE_SYSTEM_AUDIO_ENABLED = true;
 const DESKTOP_LOCAL_AUDIO_PROCESSORS_ENABLED = false;
 const CUSTOM_INPUT_GAIN_PROCESSORS_ENABLED = false;
 const KRISP_MODEL_REGISTRY_URL = "https://integrations.livekit.io/enc/v2";
@@ -2504,6 +2504,7 @@ const ScreenShareSourcePicker = memo(function ScreenShareSourcePicker({
   sources,
   compactMode,
   includeSystemAudio,
+  systemAudioSupported,
   streamQualityMode,
   onToggleIncludeSystemAudio,
   onStreamQualityModeChange,
@@ -2534,7 +2535,7 @@ const ScreenShareSourcePicker = memo(function ScreenShareSourcePicker({
   );
   const selectedSource =
     visibleSources.find((source) => source.id === selectedSourceId) ?? visibleSources[0] ?? null;
-  const systemAudioChecked = SCREEN_SHARE_SYSTEM_AUDIO_ENABLED && includeSystemAudio;
+  const systemAudioChecked = systemAudioSupported && includeSystemAudio;
 
   useEffect(() => {
     if (!isOpen) {
@@ -2714,16 +2715,16 @@ const ScreenShareSourcePicker = memo(function ScreenShareSourcePicker({
               <label
                 className={cn(
                   "flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[10px] font-medium text-white/62",
-                  SCREEN_SHARE_SYSTEM_AUDIO_ENABLED ? "cursor-pointer bg-white/[0.04]" : "cursor-not-allowed opacity-45"
+                  systemAudioSupported ? "cursor-pointer bg-white/[0.04]" : "cursor-not-allowed opacity-45"
                 )}
-                title={SCREEN_SHARE_SYSTEM_AUDIO_ENABLED ? "Include system audio" : "System audio is disabled to keep voice out of streams"}
+                title={systemAudioSupported ? "Include system audio" : "System audio capture is not available in the Omarchy app"}
               >
                 <Volume2 className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>Audio</span>
                 <input
                   type="checkbox"
                   checked={systemAudioChecked}
-                  disabled={!SCREEN_SHARE_SYSTEM_AUDIO_ENABLED}
+                  disabled={!systemAudioSupported}
                   onChange={(event) => onToggleIncludeSystemAudio(event.target.checked)}
                   className="sr-only"
                 />
@@ -2977,19 +2978,19 @@ const ScreenShareSourcePicker = memo(function ScreenShareSourcePicker({
               <label
                 className={cn(
                   "flex items-center justify-between gap-3 text-sm text-white transition",
-                  SCREEN_SHARE_SYSTEM_AUDIO_ENABLED ? "cursor-pointer" : "cursor-not-allowed opacity-52"
+                  systemAudioSupported ? "cursor-pointer" : "cursor-not-allowed opacity-52"
                 )}
                 title={
-                  SCREEN_SHARE_SYSTEM_AUDIO_ENABLED
+                  systemAudioSupported
                     ? "Include system audio"
-                    : "System audio is disabled to keep voice out of streams"
+                    : "System audio capture is not available in the Omarchy app"
                 }
               >
                 <span>System audio</span>
                 <input
                   type="checkbox"
                   checked={systemAudioChecked}
-                  disabled={!SCREEN_SHARE_SYSTEM_AUDIO_ENABLED}
+                  disabled={!systemAudioSupported}
                   onChange={(event) => onToggleIncludeSystemAudio(event.target.checked)}
                   className="sr-only"
                 />
@@ -6525,6 +6526,7 @@ export function VoiceRoom({
   const streamTakeoverOverrideIdentityRef = useRef<string | null>(null);
   const nativePopoutStreamIdentityRef = useRef<string | null>(null);
   const suppressNextPopoutRestoreRef = useRef(false);
+  const screenShareSourceRequestRef = useRef(0);
   const screenShareSessionRef = useRef<ScreenShareSession | null>(null);
   const screenShareUsageStartedAtRef = useRef<number | null>(null);
   const screenShareUsageReportedAtRef = useRef<number | null>(null);
@@ -6564,6 +6566,8 @@ export function VoiceRoom({
   const fallbackLiveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
   const desktopBridge = getDesktopBridge();
   const isDesktopShell = Boolean(desktopBridge?.isDesktop);
+  const screenShareSystemAudioSupported =
+    !isDesktopShell || desktopBridge?.supportsSystemAudioCapture === true;
   const audioMode = resolveAudioMode({
     diagnosticFallback: diagnosticFallbackActive,
     audioProfile,
@@ -7600,10 +7604,11 @@ export function VoiceRoom({
     setScreenTrackIdentity(null);
     setSelectedStreamIdentity(null);
     setIsSharing(false);
+    clearDesktopScreenShareSelection();
     setIsScreenSharePickerOpen(false);
     setScreenShareSources([]);
     setScreenShareSourcesLoading(false);
-    setScreenShareIncludeSystemAudio(true);
+    setScreenShareIncludeSystemAudio(false);
     setStreamStats(null);
     krispProcessorRef.current = null;
     krispGainProcessorRef.current = null;
@@ -9140,9 +9145,9 @@ export function VoiceRoom({
     activeRoom: Room,
     includeSystemAudio: boolean,
     qualityMode: StreamQualityMode,
-    options: { takeoverIdentity?: string | null } = {}
+    options: { takeoverIdentity?: string | null; remainingSeconds?: number } = {}
   ) {
-    const shouldCaptureSystemAudio = SCREEN_SHARE_SYSTEM_AUDIO_ENABLED && includeSystemAudio;
+    const shouldCaptureSystemAudio = screenShareSystemAudioSupported && includeSystemAudio;
     const timingStartedAt = getPerformanceNow();
     const takeoverIdentity = options.takeoverIdentity ?? null;
     const activeRemoteStreamIdentity = getActiveRemoteStreamIdentity(activeRoom);
@@ -9153,7 +9158,7 @@ export function VoiceRoom({
     const profile = getScreenShareProfile(qualityMode);
     await stopLocalScreenShare(activeRoom, false);
 
-    const remainingSeconds = await getScreenShareRemainingSeconds();
+    const remainingSeconds = options.remainingSeconds ?? await getScreenShareRemainingSeconds();
     if (remainingSeconds <= 0) {
       throw new Error("Daily streaming limit reached. You can stream again tomorrow.");
     }
@@ -12964,21 +12969,35 @@ export function VoiceRoom({
     }
   }
 
+  function clearDesktopScreenShareSelection() {
+    screenShareSourceRequestRef.current += 1;
+    const clearRequest = desktopBridge?.clearScreenShareSourceSelection?.();
+    void clearRequest?.catch(() => undefined);
+  }
+
   async function beginScreenShareStart(takeoverIdentity: string | null = null) {
     if (!room) {
       return;
     }
 
     if (isDesktopShell && desktopBridge) {
+      const sourceRequestId = ++screenShareSourceRequestRef.current;
       streamTakeoverOverrideIdentityRef.current = takeoverIdentity;
       setError(null);
+      setScreenShareSources([]);
       setScreenShareSourcesLoading(true);
       setIsScreenSharePickerOpen(true);
 
       try {
         const sources = await desktopBridge.listDisplayMediaSources();
+        if (sourceRequestId !== screenShareSourceRequestRef.current) {
+          return;
+        }
         setScreenShareSources(sources);
       } catch (caughtError) {
+        if (sourceRequestId !== screenShareSourceRequestRef.current) {
+          return;
+        }
         streamTakeoverOverrideIdentityRef.current = null;
         setIsScreenSharePickerOpen(false);
         setError(
@@ -12987,7 +13006,9 @@ export function VoiceRoom({
             : "Unable to list available screens and windows."
         );
       } finally {
-        setScreenShareSourcesLoading(false);
+        if (sourceRequestId === screenShareSourceRequestRef.current) {
+          setScreenShareSourcesLoading(false);
+        }
       }
 
       return;
@@ -12996,7 +13017,7 @@ export function VoiceRoom({
     try {
       await startLocalScreenShare(
         room,
-        SCREEN_SHARE_SYSTEM_AUDIO_ENABLED && screenShareIncludeSystemAudio,
+        screenShareSystemAudioSupported && screenShareIncludeSystemAudio,
         streamQualityMode,
         { takeoverIdentity }
       );
@@ -13075,11 +13096,16 @@ export function VoiceRoom({
       return;
     }
 
-    const includeSystemAudio = SCREEN_SHARE_SYSTEM_AUDIO_ENABLED && screenShareIncludeSystemAudio;
+    const includeSystemAudio = screenShareSystemAudioSupported && screenShareIncludeSystemAudio;
     setError(null);
     setScreenShareSourcesLoading(true);
 
     try {
+      const remainingSeconds = await getScreenShareRemainingSeconds();
+      if (remainingSeconds <= 0) {
+        throw new Error("Daily streaming limit reached. You can stream again tomorrow.");
+      }
+
       const prepared = await desktopBridge.prepareScreenShareSource({
         id: source.id,
         kind: source.kind,
@@ -13091,20 +13117,22 @@ export function VoiceRoom({
       }
 
       await startLocalScreenShare(room, includeSystemAudio, streamQualityMode, {
-        takeoverIdentity: streamTakeoverOverrideIdentityRef.current
+        takeoverIdentity: streamTakeoverOverrideIdentityRef.current,
+        remainingSeconds
       });
       setIsScreenSharePickerOpen(false);
       refreshParticipants(room);
     } catch (caughtError) {
-      if (
+      setError(
         caughtError instanceof Error &&
-        (caughtError.name === "NotAllowedError" || caughtError.name === "AbortError")
-      ) {
-        return;
-      }
-
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to start screen sharing.");
+          (caughtError.name === "NotAllowedError" || caughtError.name === "AbortError")
+          ? "Screen sharing was cancelled or could not start. Choose a source and try again."
+          : caughtError instanceof Error
+            ? caughtError.message
+            : "Unable to start screen sharing."
+      );
     } finally {
+      clearDesktopScreenShareSelection();
       streamTakeoverOverrideIdentityRef.current = null;
       setScreenShareSourcesLoading(false);
     }
@@ -13922,11 +13950,14 @@ export function VoiceRoom({
                 sources={screenShareSources}
                 compactMode={compactMode}
                 includeSystemAudio={screenShareIncludeSystemAudio}
+                systemAudioSupported={screenShareSystemAudioSupported}
                 streamQualityMode={streamQualityMode}
                 onToggleIncludeSystemAudio={setScreenShareIncludeSystemAudio}
                 onStreamQualityModeChange={setStreamQualityMode}
                 onClose={() => {
+                  clearDesktopScreenShareSelection();
                   streamTakeoverOverrideIdentityRef.current = null;
+                  setScreenShareSourcesLoading(false);
                   setIsScreenSharePickerOpen(false);
                 }}
                 onSelect={(source) => {

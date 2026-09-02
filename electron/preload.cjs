@@ -25,9 +25,12 @@ contextBridge.exposeInMainWorld("sovchatDesktop", {
   publicAppUrl,
   remoteAppUrl: apiBaseUrl,
   windowRole,
+  supportsSystemAudioCapture: process.platform === "win32",
   listDisplayMediaSources: () => ipcRenderer.invoke("desktop:list-display-media-sources"),
   prepareScreenShareSource: (selection) =>
     ipcRenderer.invoke("desktop:prepare-screen-share-source", selection),
+  clearScreenShareSourceSelection: () =>
+    ipcRenderer.invoke("desktop:clear-screen-share-source"),
   openStreamPopout: (request) => ipcRenderer.invoke("desktop:stream-popout-open", request),
   closeStreamPopout: () => ipcRenderer.invoke("desktop:stream-popout-close"),
   sendStreamPopoutCommand: (command) =>

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "com.sovchat.omarchy",
   "name": "SovChat",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "author": "SovChat",
   "license": "MIT",
   "description": "An Omarchy-native launcher and status panel for the SovChat desktop client.",

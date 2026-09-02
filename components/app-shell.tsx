@@ -40,7 +40,7 @@ type AppShellProps = PropsWithChildren<{
   userId: string;
   nickname: string;
   forceVoiceRoute?: boolean;
-  logoutRedirectPath?: "/login" | "/desktop";
+  logoutRedirectPath?: "/desktop";
   onLogout?: () => void;
 }>;
 
@@ -199,7 +199,7 @@ export function AppShell({
   nickname,
   children,
   forceVoiceRoute = false,
-  logoutRedirectPath = "/login",
+  logoutRedirectPath = "/desktop",
   onLogout
 }: AppShellProps) {
   const router = useRouter();

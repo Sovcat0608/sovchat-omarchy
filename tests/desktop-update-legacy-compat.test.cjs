@@ -8,7 +8,7 @@ const {
   resolveDesktopUpdatePolicy
 } = require("../electron/update-policy.cjs");
 
-const PRERELEASE_VERSION = "0.3.52-preview.3";
+const RELEASE_VERSION = "0.4.6";
 
 function shouldReceiveLatestManifestPing(currentVersion, manifestVersion) {
   const policy = resolveDesktopUpdatePolicy({ isPackaged: true });
@@ -35,32 +35,32 @@ async function actualUpdaterAccepts(currentVersion, manifestVersion) {
   return updater.isUpdateAvailable({ version: manifestVersion });
 }
 
-test("a latest-channel prerelease manifest pings legacy 0.3.50 and 0.3.51 clients", () => {
-  for (const currentVersion of ["0.3.50", "0.3.51"]) {
+test("the latest-linux manifest pings existing 0.4.4 and 0.4.5 clients", () => {
+  for (const currentVersion of ["0.4.4", "0.4.5"]) {
     assert.equal(
-      shouldReceiveLatestManifestPing(currentVersion, PRERELEASE_VERSION),
+      shouldReceiveLatestManifestPing(currentVersion, RELEASE_VERSION),
       true,
-      `${currentVersion} should accept ${PRERELEASE_VERSION} from latest.yml`
+      `${currentVersion} should accept ${RELEASE_VERSION} from latest-linux.yml`
     );
   }
 });
 
-test("an installed prerelease client does not ping itself", () => {
+test("an installed 0.4.6 client does not ping itself", () => {
   assert.equal(
-    shouldReceiveLatestManifestPing(PRERELEASE_VERSION, PRERELEASE_VERSION),
+    shouldReceiveLatestManifestPing(RELEASE_VERSION, RELEASE_VERSION),
     false
   );
 });
 
-test("electron-updater's generic feed accepts a newer prerelease for 0.3.50+", async () => {
-  for (const currentVersion of ["0.3.50", "0.3.51", "0.3.52-preview.2"]) {
+test("electron-updater accepts 0.4.6 for every older Omarchy client", async () => {
+  for (const currentVersion of ["0.4.4", "0.4.5", "0.4.6-preview.1"]) {
     assert.equal(
-      await actualUpdaterAccepts(currentVersion, PRERELEASE_VERSION),
+      await actualUpdaterAccepts(currentVersion, RELEASE_VERSION),
       true,
-      `${currentVersion} should accept ${PRERELEASE_VERSION}`
+      `${currentVersion} should accept ${RELEASE_VERSION}`
     );
   }
 
-  assert.equal(await actualUpdaterAccepts(PRERELEASE_VERSION, PRERELEASE_VERSION), false);
-  assert.equal(await actualUpdaterAccepts("0.3.52", PRERELEASE_VERSION), false);
+  assert.equal(await actualUpdaterAccepts(RELEASE_VERSION, RELEASE_VERSION), false);
+  assert.equal(await actualUpdaterAccepts("0.4.7", RELEASE_VERSION), false);
 });

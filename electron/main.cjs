@@ -22,13 +22,23 @@ const path = require("node:path");
 const process = require("node:process");
 const { pathToFileURL } = require("node:url");
 const packageMetadata = require("../package.json");
+const {
+  resolveLinuxAppImagePath,
+  syncManagedAppImageVersion
+} = require("./appimage-install.cjs");
+const {
+  createDisplayMediaSelectionController
+} = require("./display-media-selection.cjs");
 const { resolveLinuxDisplayBackend } = require("./linux-display-policy.cjs");
 const {
   tryMinimizeOnHyprland,
   tryRestoreOnHyprland
 } = require("./linux-window-control.cjs");
 const { isDesktopPermissionAllowed } = require("./permission-policy.cjs");
-const { resolveDesktopUpdatePolicy } = require("./update-policy.cjs");
+const {
+  STABLE_LINUX_X64_UPDATE_MANIFEST_FILE,
+  resolveDesktopUpdatePolicy
+} = require("./update-policy.cjs");
 
 const HOST = "127.0.0.1";
 const PORT = Number.parseInt(process.env.PORT ?? "3000", 10);
@@ -149,7 +159,6 @@ let mainWindowExpandedBounds = null;
 let streamPopoutWindow = null;
 let streamPopoutIdentity = null;
 let nextServerProcess = null;
-let pendingDisplayMediaSelection = null;
 let updateCheckInterval = null;
 let updateCheckInFlight = false;
 let updateDownloadPromise = null;
@@ -196,6 +205,10 @@ let updateState = {
   installDirectory: app.isPackaged ? path.dirname(process.execPath) : null,
   installDirectoryWritable: null
 };
+const displayMediaSelectionController = createDisplayMediaSelectionController({
+  getSources: (options) => desktopCapturer.getSources(options),
+  platform: process.platform
+});
 
 async function markDesktopPresenceOffline(reason) {
   const sessionToken = desktopPresenceSessionToken;
@@ -777,6 +790,15 @@ async function exportClientDiagnostics(targetWindow) {
 function getDesktopUpdateInstallDirectory() {
   if (!app.isPackaged) {
     return getSourceAppRoot();
+  }
+
+  const appImagePath = resolveLinuxAppImagePath({
+    platform: process.platform,
+    isPackaged: app.isPackaged,
+    appImagePath: process.env.APPIMAGE
+  });
+  if (appImagePath) {
+    return path.dirname(appImagePath);
   }
 
   return path.dirname(process.execPath);
@@ -1606,7 +1628,7 @@ function sourceThumbnailToDataUrl(image) {
 }
 
 async function listDisplayMediaSources() {
-  const sources = await desktopCapturer.getSources({
+  const sources = await displayMediaSelectionController.list({
     types: ["screen", "window"],
     // Thumbnails are only for the picker UI and do not affect the actual capture resolution.
     thumbnailSize: {
@@ -1651,18 +1673,15 @@ function registerDesktopCaptureHandlers() {
     const sourceKind = selection?.kind === "window" ? "window" : "screen";
     const includeSystemAudio = Boolean(selection?.includeSystemAudio);
 
-    if (!sourceId) {
-      pendingDisplayMediaSelection = null;
-      appendDesktopLog("Rejected screen share source preparation with missing source id.");
+    if (!sourceId || !displayMediaSelectionController.prepare(selection)) {
+      displayMediaSelectionController.clear();
+      appendDesktopLog(
+        sourceId
+          ? `Rejected screen share source preparation for an unavailable source: ${sourceId}`
+          : "Rejected screen share source preparation with missing source id."
+      );
       return false;
     }
-
-    pendingDisplayMediaSelection = {
-      id: sourceId,
-      kind: sourceKind,
-      includeSystemAudio,
-      createdAt: Date.now()
-    };
 
     appendDesktopLog(
       `Prepared display media source ${sourceId} kind=${sourceKind} audio=${includeSystemAudio}`
@@ -1670,52 +1689,26 @@ function registerDesktopCaptureHandlers() {
     return true;
   });
 
-  session.defaultSession.setDisplayMediaRequestHandler(
-    async (_request, callback) => {
-      const selection = pendingDisplayMediaSelection;
-      pendingDisplayMediaSelection = null;
+  ipcMain.handle("desktop:clear-screen-share-source", () => {
+    displayMediaSelectionController.clear();
+    appendVerboseDesktopLog("Cleared pending display media selection.");
+    return true;
+  });
 
-      if (!selection || Date.now() - selection.createdAt > 15_000) {
+  session.defaultSession.setDisplayMediaRequestHandler(
+    (_request, callback) => {
+      const grant = displayMediaSelectionController.consumeGrant();
+
+      if (!grant) {
         appendDesktopLog("Denied display media request because no recent source was selected.");
         callback({});
         return;
       }
 
-      try {
-        const sources = await desktopCapturer.getSources({
-          types: [selection.kind],
-          // Source lookup thumbnails are not part of the published capture pipeline.
-          thumbnailSize: {
-            width: 16,
-            height: 16
-          },
-          fetchWindowIcons: false
-        });
-        const source = sources.find((candidate) => candidate.id === selection.id);
-
-        if (!source) {
-          appendDesktopLog(`Denied display media request because source was missing: ${selection.id}`);
-          callback({});
-          return;
-        }
-
-        appendDesktopLog(
-          `Approved display media source ${source.id} (${source.name}) without low-resolution capture constraints.`
-        );
-        callback(
-          selection.includeSystemAudio
-            ? {
-                video: source,
-                audio: "loopback"
-              }
-            : {
-                video: source
-              }
-        );
-      } catch (error) {
-        appendDesktopLog(`Display media request failed: ${serializeError(error)}`);
-        callback({});
-      }
+      appendDesktopLog(
+        `Approved cached display media source ${grant.video.id} (${grant.video.name}) audio=${Boolean(grant.audio)} without re-enumerating capture sources.`
+      );
+      callback(grant);
     },
     {
       useSystemPicker: false
@@ -2390,7 +2383,7 @@ function configureAutoUpdater() {
 
   autoUpdater.on("checking-for-update", () => {
     appendDesktopLog(
-      `Checking for desktop updates at ${desktopConfig.updateFeedUrl}/${updatePolicy.manifestChannel}.yml`
+      `Checking for desktop updates at ${desktopConfig.updateFeedUrl}/${STABLE_LINUX_X64_UPDATE_MANIFEST_FILE}`
     );
     patchUpdateState({
       status: "checking",
@@ -3050,6 +3043,19 @@ async function bootstrap() {
   }
 
   try {
+    const versionSync = syncManagedAppImageVersion({
+      platform: process.platform,
+      isPackaged: app.isPackaged,
+      appImagePath: process.env.APPIMAGE,
+      homeDirectory: app.getPath("home"),
+      version: app.getVersion()
+    });
+    if (versionSync.status === "synced") {
+      appendVerboseDesktopLog(`Synchronized managed AppImage version sidecar to ${versionSync.version}.`);
+    } else if (versionSync.status === "failed") {
+      appendDesktopLog(`Could not synchronize managed AppImage version sidecar: ${versionSync.reason}`);
+    }
+
     appendDesktopLog("Electron packaged bootstrap starting.");
     if (IS_WIP_BUILD) {
       appendDesktopLog(

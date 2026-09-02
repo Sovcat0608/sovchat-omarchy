@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, KeyRound, LoaderCircle, LockKeyhole, Mail, UserRound } from "lucide-react";
@@ -17,7 +16,7 @@ type AuthMode = "login" | "signup";
 type LoginFormProps = {
   mode: AuthMode;
   successPath?: string;
-  onModeChange?: (mode: AuthMode) => void;
+  onModeChange: (mode: AuthMode) => void;
 };
 
 type AuthCopy = {
@@ -424,19 +423,13 @@ export function LoginForm({
       <div className="mx-auto mt-8 flex max-w-[19rem] flex-col items-center gap-3 pt-4 text-center text-sm">
         <p className="text-white/42">
           {copy.alternateText}{" "}
-          {onModeChange ? (
-            <button
-              type="button"
-              onClick={() => onModeChange(copy.alternateHref === "/signup" ? "signup" : "login")}
-              className="font-medium text-white transition hover:text-[var(--accent)]"
-            >
-              {copy.alternateLabel}
-            </button>
-          ) : (
-            <Link href={copy.alternateHref} className="font-medium text-white hover:text-[var(--accent)]">
-              {copy.alternateLabel}
-            </Link>
-          )}
+          <button
+            type="button"
+            onClick={() => onModeChange(copy.alternateHref === "/signup" ? "signup" : "login")}
+            className="font-medium text-white transition hover:text-[var(--accent)]"
+          >
+            {copy.alternateLabel}
+          </button>
         </p>
 
       </div>

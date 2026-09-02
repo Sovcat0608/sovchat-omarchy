@@ -30,6 +30,18 @@ jobs:
           cache: npm
           package-manager-cache: true
 
+      - name: Verify release tag matches the package version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            expected_tag="v$(node -p "require('./package.json').version")"
+            if [[ "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
+              printf 'Tag %s does not match package version tag %s.\n' "$GITHUB_REF_NAME" "$expected_tag" >&2
+              exit 1
+            fi
+          fi
+
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
@@ -45,6 +57,8 @@ jobs:
       - name: Test Omarchy boundaries and installer
         run: |
           npm run test:linux-package
+          npm run test:desktop-updates
+          npm run test:release-tools
           npm run test:build-pipeline
           npm run test:layout
           npm run test:plugin-security
@@ -59,8 +73,10 @@ jobs:
           shopt -s nullglob
           appimages=(release/omarchy/SovChat-Omarchy-*-x86_64.AppImage)
           archives=(release/omarchy/*.tar.gz)
+          manifest=release/omarchy/latest-linux.yml
           test "${#appimages[@]}" -eq 1
           test "${#archives[@]}" -eq 1
+          test -f "$manifest"
 
           chmod +x "${appimages[0]}"
           inspection_dir="$(mktemp -d)"
@@ -71,7 +87,9 @@ jobs:
 
           grep -R -a -q 'livekit.sovchat.com' "$inspection_dir/app/electron/renderer"
           grep -R -a -q 'X-SovChat-App-Variant' "$inspection_dir/app/electron"
-          sha512sum "${appimages[0]}" "${archives[0]}" > release/omarchy/SHA512SUMS
+          grep -F -q 'https://sovchat.com/desktop-updates/omarchy' squashfs-root/resources/app-update.yml
+          sha512sum "${appimages[0]}" "${archives[0]}" "$manifest" > release/omarchy/SHA512SUMS
+          npm run verify:omarchy-release
 
       - name: Upload verified Omarchy packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -80,6 +98,7 @@ jobs:
           path: |
             release/omarchy/SovChat-Omarchy-*-x86_64.AppImage
             release/omarchy/*.tar.gz
+            release/omarchy/latest-linux.yml
             release/omarchy/SHA512SUMS
           if-no-files-found: error
           retention-days: 7

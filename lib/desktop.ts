@@ -124,10 +124,12 @@ export type SovChatDesktopBridge = {
   publicAppUrl?: string;
   remoteAppUrl?: string;
   windowRole?: DesktopWindowRole;
+  supportsSystemAudioCapture?: boolean;
   listDisplayMediaSources: () => Promise<DesktopDisplayMediaSource[]>;
   prepareScreenShareSource: (
     selection: DesktopScreenShareSelection
   ) => Promise<boolean>;
+  clearScreenShareSourceSelection?: () => Promise<boolean>;
   openStreamPopout?: (request: DesktopStreamPopoutRequest) => Promise<boolean>;
   closeStreamPopout?: () => Promise<boolean>;
   sendStreamPopoutCommand?: (command: DesktopStreamPopoutCommand) => Promise<boolean>;
