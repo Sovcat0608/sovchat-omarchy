@@ -18,6 +18,17 @@ const IGNORED_FILE_PREFIXES = [
 
 const RULES = [
   {
+    kind: "feature",
+    title: "Open account registration",
+    detail:
+      "Removed the beta access-code field; the service now accepts signups until its server-enforced 500-account capacity is reached.",
+    matches: [
+      /^components\/login-form\.tsx$/u,
+      /^lib\/validators\.ts$/u,
+      /^tests\/open-signup-surface\.test\.mjs$/u
+    ]
+  },
+  {
     kind: "fix",
     title: "Voice connection reliability",
     detail:
@@ -76,7 +87,7 @@ const RULES = [
 
 function runGit(args, fallback = "") {
   try {
-    return execFileSync("git", args, {
+    return execFileSync("git", ["-c", `safe.directory=${rootDir}`, ...args], {
       cwd: rootDir,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"]
@@ -116,18 +127,19 @@ function getPreviousRelease(version) {
     return null;
   }
 
-  const releaseLog = runGit([
-    "log",
-    "--format=%H%x09%s",
-    "--grep=^Release v[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*$"
+  const releaseTags = runGit([
+    "tag",
+    "--list",
+    "v[0-9]*.[0-9]*.[0-9]*",
+    "--sort=-version:refname"
   ]);
 
-  const candidates = releaseLog
+  const candidates = releaseTags
     .split(/\r?\n/u)
-    .map((line) => {
-      const [hash, subject] = line.split("\t");
-      const match = /^Release v(?<version>\d+\.\d+\.\d+)$/u.exec(subject ?? "");
+    .map((tag) => {
+      const match = /^v(?<version>\d+\.\d+\.\d+)$/u.exec(tag);
       const parsed = match?.groups ? parseSemver(match.groups.version) : null;
+      const hash = parsed ? runGit(["rev-parse", `${tag}^{commit}`]) : "";
 
       return hash && match?.groups && parsed && compareSemver(parsed, current) < 0
         ? { hash, version: match.groups.version, parsed }
@@ -210,7 +222,7 @@ function buildReleaseNotes(commitSubjects, highlights) {
 
   const fallbackNotes = highlights.map((item) => normalizeReleaseNote(item.detail));
 
-  return Array.from(new Set(commitNotes.length > 0 ? commitNotes : fallbackNotes)).slice(0, 8);
+  return Array.from(new Set([...fallbackNotes, ...commitNotes])).slice(0, 8);
 }
 
 function toSource(value) {

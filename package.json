@@ -1,6 +1,6 @@
 {
   "name": "sovchat-omarchy",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "sovchatVariant": "omarchy",
   "description": "SovChat client and native plugin for Omarchy.",
   "author": "Tyronne Garth Jones <info@sovchat.com> (Kent, UK)",
@@ -21,6 +21,7 @@
     "build:desktop": "node scripts/build-desktop.mjs",
     "start:desktop": "electron .",
     "dist:omarchy": "node scripts/dist-linux.mjs",
+    "test:auth-surface": "node --test --test-isolation=none tests/open-signup-surface.test.mjs",
     "test:audio": "node --no-warnings --experimental-strip-types --test --test-isolation=none tests/voice-join-policy.test.mts tests/audio-diagnostics-policy.test.mts tests/audio-settings-store.test.mts tests/local-noise-filter.test.cjs",
     "test:livekit": "node --no-warnings --experimental-strip-types --test --test-isolation=none tests/livekit-service-errors.test.mts tests/livekit-client-endpoint.test.mts tests/livekit-client-diagnostics.test.mts",
     "test:diagnostics": "node --test --test-isolation=none tests/client-diagnostics-privacy.test.cjs",

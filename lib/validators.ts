@@ -60,21 +60,7 @@ export const loginSchema = z.object({
 export const signupSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
-  nickname: nicknameSchema,
-  betaAccessCode: z
-    .string()
-    .trim()
-    .min(6, "Enter your beta access code.")
-    .max(80, "Beta access code is too long.")
-});
-
-export const betaAccessRequestSchema = z.object({
-  name: z.string().trim().min(2, "Enter your name.").max(80, "Name is too long."),
-  email: emailSchema,
-  message: z.string().trim().max(1_000, "Message is too long.").optional().default(""),
-  website: z.string().max(200).optional().default(""),
-  startedAt: z.number().int().positive(),
-  turnstileToken: z.string().trim().min(1, "Complete the security check.").max(2_048)
+  nickname: nicknameSchema
 });
 
 export const resendVerificationSchema = z.object({

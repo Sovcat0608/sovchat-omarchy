@@ -10,7 +10,8 @@ Independent SovChat app and native plugin for Omarchy.
 ## Requirements
 
 - Omarchy Quattro with third-party plugin support
-- a SovChat account with beta access
+- a SovChat account; anyone can sign up while the server-enforced 500-account
+  capacity has space
 - `bash`, Python 3, and `curl` for the user-level client installer
 - optional `fuse2` support if the AppImage runtime is not already available
 

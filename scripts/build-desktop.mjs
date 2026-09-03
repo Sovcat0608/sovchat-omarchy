@@ -139,6 +139,7 @@ function stopConflictingDesktopProcesses() {
 stopDevServerPort();
 stopConflictingDesktopProcesses();
 await run(process.execPath, [path.resolve("scripts", "write-build-meta.mjs")], buildEnv);
+await run(process.execPath, [path.resolve("scripts", "write-release-highlights.mjs")], buildEnv);
 const cleanup = cleanNextBuildOutputPreservingCache();
 console.log(
   `[sovchat:build] Next.js cache ${cleanup.cachePreserved ? "preserved" : "not available"}; ` +

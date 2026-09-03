@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, KeyRound, LoaderCircle, LockKeyhole, Mail, UserRound } from "lucide-react";
+import { CheckCircle2, LoaderCircle, LockKeyhole, Mail, UserRound } from "lucide-react";
 import logoMark from "@/images/logo.svg";
 import { apiFetch, resolveApiUrl } from "@/lib/api-client";
 import { getDesktopBridge } from "@/lib/desktop";
@@ -70,7 +70,6 @@ export function LoginForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
-  const [betaAccessCode, setBetaAccessCode] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -174,8 +173,7 @@ export function LoginForm({
         ? signupSchema.safeParse({
             email,
             password,
-            nickname,
-            betaAccessCode
+            nickname
           })
         : loginSchema.safeParse({
             email,
@@ -270,9 +268,6 @@ export function LoginForm({
     const desktopBridge = getDesktopBridge();
     startUrl.searchParams.set("returnTo", returnTo);
     startUrl.searchParams.set("rememberMe", rememberMe ? "true" : "false");
-    if (mode === "signup" && betaAccessCode.trim()) {
-      startUrl.searchParams.set("betaAccessCode", betaAccessCode.trim());
-    }
     if (desktopBridge?.isDesktop) {
       startUrl.searchParams.set("clientKind", "desktop");
       startUrl.searchParams.set("appVariant", APP_BUILD_VARIANT);
@@ -290,33 +285,18 @@ export function LoginForm({
 
       <form onSubmit={handleSubmit} className="mx-auto mt-5 max-w-[19rem] space-y-3.5">
         {mode === "signup" ? (
-          <>
-            <label className="block">
-              <span className="relative block">
-                <UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/34" />
-                <input
-                  value={nickname}
-                  onChange={(event) => setNickname(event.target.value)}
-                  maxLength={20}
-                  className="auth-input w-full rounded-2xl px-12 py-4 outline-none transition"
-                  placeholder="display name"
-                />
-              </span>
-            </label>
-            <label className="block">
-              <span className="relative block">
-                <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/34" />
-                <input
-                  value={betaAccessCode}
-                  onChange={(event) => setBetaAccessCode(event.target.value)}
-                  maxLength={80}
-                  className="auth-input w-full rounded-2xl px-12 py-4 outline-none transition"
-                  placeholder="beta access code"
-                  autoComplete="one-time-code"
-                />
-              </span>
-            </label>
-          </>
+          <label className="block">
+            <span className="relative block">
+              <UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/34" />
+              <input
+                value={nickname}
+                onChange={(event) => setNickname(event.target.value)}
+                maxLength={20}
+                className="auth-input w-full rounded-2xl px-12 py-4 outline-none transition"
+                placeholder="display name"
+              />
+            </span>
+          </label>
         ) : null}
 
         <label className="block">

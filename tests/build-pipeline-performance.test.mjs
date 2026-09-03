@@ -31,6 +31,13 @@ test("Omarchy build is client-only and uses its own update feed", () => {
   const distSource = fs.readFileSync(new URL("../scripts/dist-linux.mjs", import.meta.url), "utf8");
 
   assert.doesNotMatch(buildSource, /Prisma|prisma/u);
+  assert.match(buildSource, /write-release-highlights\.mjs/u);
+  const highlightsSource = fs.readFileSync(
+    new URL("../scripts/write-release-highlights.mjs", import.meta.url),
+    "utf8"
+  );
+  assert.match(highlightsSource, /tag[\s\S]*--sort=-version:refname/u);
+  assert.match(highlightsSource, /Open account registration/u);
   assert.match(distSource, /--use-prepared-renderer/u);
   assert.match(distSource, /assertPreparedDesktopRenderer/u);
   assert.match(distSource, /desktop-updates\/omarchy/u);

@@ -56,6 +56,7 @@ jobs:
 
       - name: Test Omarchy boundaries and installer
         run: |
+          npm run test:auth-surface
           npm run test:linux-package
           npm run test:desktop-updates
           npm run test:release-tools
