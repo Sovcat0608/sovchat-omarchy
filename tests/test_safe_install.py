@@ -46,16 +46,16 @@ class ReviewedSnapshotTests(unittest.TestCase):
             panel,
         )
 
-        self.assertEqual(manifest["version"], "0.1.4")
-        self.assertRegex(control, r'readonly CLIENT_VERSION="0\.4\.7"')
-        self.assertRegex(control, r'readonly CLIENT_ARTIFACT="SovChat-Omarchy-0\.4\.7-x86_64\.AppImage"')
+        self.assertEqual(manifest["version"], "0.1.5")
+        self.assertRegex(control, r'readonly CLIENT_VERSION="0\.4\.8"')
+        self.assertRegex(control, r'readonly CLIENT_ARTIFACT="SovChat-Omarchy-0\.4\.8-x86_64\.AppImage"')
         self.assertRegex(
             control,
-            r'readonly CLIENT_URL="https://sovchat\.com/desktop-updates/omarchy/SovChat-Omarchy-0\.4\.7-x86_64\.AppImage"',
+            r'readonly CLIENT_URL="https://sovchat\.com/desktop-updates/omarchy/SovChat-Omarchy-0\.4\.8-x86_64\.AppImage"',
         )
         self.assertRegex(control, r'readonly CLIENT_RELEASE_READY="true"')
-        self.assertRegex(control, r'readonly CLIENT_EXPECTED_BYTES="129110268"')
-        self.assertRegex(control, r'readonly CLIENT_SHA512_HEX="48540f5f2f0882990dd6e1ccc5f8eb7c2c60efe65f14a426e40593561e3ff82d3a36f8184f8a4007cf37ecc3cee1e6180a255f83a222eb3792c18b3aae7aa229"')
+        self.assertRegex(control, r'readonly CLIENT_EXPECTED_BYTES="129110265"')
+        self.assertRegex(control, r'readonly CLIENT_SHA512_HEX="23e481678f0c85ae079862dbe4cff70c4d65cb590031533a256f93e0ec93cf375f7ad4d2e58b518b8dc2a4bef47958655b52f69e098ef24a235a00113157933f"')
         self.assertNotIn("${INSTALL_TARGET}.new", control)
         self.assertNotRegex(control, re.compile(r"\binstall\s+-[dm]"))
         self.assertNotIn("--location", control)
@@ -65,7 +65,7 @@ class ReviewedSnapshotTests(unittest.TestCase):
         self.assertNotIn('.trim().split("\\n")', widget)
         self.assertIn('"STANDALONE FOUND"', panel)
         self.assertIn('"INSTALL OMARCHY EDITION"', panel)
-        self.assertIn('text: "PLUGIN 0.1.4"', panel)
+        self.assertIn('text: "PLUGIN 0.1.5"', panel)
         self.assertIn("fields.length === 7", widget)
         self.assertIn('(fields[0] === "1") === (fields[3] !== "")', widget)
         self.assertIn('(fields[4] === "1") === (fields[6] !== "")', widget)

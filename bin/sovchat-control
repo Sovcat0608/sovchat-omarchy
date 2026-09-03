@@ -3,12 +3,12 @@
 set -u
 
 readonly PROCESS_NAME="SovChatOmarchy"
-readonly CLIENT_VERSION="0.4.7"
-readonly CLIENT_ARTIFACT="SovChat-Omarchy-0.4.7-x86_64.AppImage"
-readonly CLIENT_URL="https://sovchat.com/desktop-updates/omarchy/SovChat-Omarchy-0.4.7-x86_64.AppImage"
+readonly CLIENT_VERSION="0.4.8"
+readonly CLIENT_ARTIFACT="SovChat-Omarchy-0.4.8-x86_64.AppImage"
+readonly CLIENT_URL="https://sovchat.com/desktop-updates/omarchy/SovChat-Omarchy-0.4.8-x86_64.AppImage"
 readonly CLIENT_RELEASE_READY="true"
-readonly CLIENT_SHA512_HEX="48540f5f2f0882990dd6e1ccc5f8eb7c2c60efe65f14a426e40593561e3ff82d3a36f8184f8a4007cf37ecc3cee1e6180a255f83a222eb3792c18b3aae7aa229"
-readonly CLIENT_EXPECTED_BYTES="129110268"
+readonly CLIENT_SHA512_HEX="23e481678f0c85ae079862dbe4cff70c4d65cb590031533a256f93e0ec93cf375f7ad4d2e58b518b8dc2a4bef47958655b52f69e098ef24a235a00113157933f"
+readonly CLIENT_EXPECTED_BYTES="129110265"
 readonly CLIENT_MAX_BYTES="268435456"
 readonly INSTALL_DIR="${HOME}/.local/opt/sovchat-omarchy"
 readonly INSTALL_TARGET="${INSTALL_DIR}/SovChat-Omarchy.AppImage"

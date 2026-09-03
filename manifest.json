@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "com.sovchat.omarchy",
   "name": "SovChat",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "author": "SovChat",
   "license": "MIT",
-  "description": "Voice rooms, text chat, and screen and application sharing for Omarchy, with a native bar widget to install, launch, focus, and update the dedicated SovChat client.",
+  "description": "Voice rooms, text chat, and screen and application sharing for Omarchy, with a native bar widget to install, launch, focus, and update the dedicated SovChat client. Open signup is available until the server-enforced 500-account limit is reached.",
   "kinds": [
     "bar-widget"
   ],

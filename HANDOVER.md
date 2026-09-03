@@ -20,7 +20,7 @@ for this client's static update-feed directory.
 - Client update feed: `https://sovchat.com/desktop-updates/omarchy`
 - Client version: `0.4.8`
 - Plugin ID: `com.sovchat.omarchy`
-- Plugin version: `0.1.4`
+- Plugin version: `0.1.5`
 - GitHub repository: `https://github.com/Sovcat0608/sovchat-omarchy`
 - Marketplace plugin repository: `https://github.com/Sovcat0608/sovchat-omarchy-plugin`
 
