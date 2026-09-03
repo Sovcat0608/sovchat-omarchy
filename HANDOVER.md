@@ -107,14 +107,33 @@ The Omarchy marketplace entry already exists as `com.sovchat.omarchy`; its
 original listing is omacom/omarchy-plugin-marketplace issue 2888. Do not submit
 a second plugin ID.
 
-Sync the reviewed plugin surface into
-`https://github.com/Sovcat0608/sovchat-omarchy-plugin`: `BarWidget.qml`,
-`Panel.qml`, `manifest.json`, `README.md`, `sovchat.svg`,
-`bin/sovchat-control`, `bin/sovchat-safe-install.py`, and
-`tests/test_safe_install.py`. Run that repository's security workflow, then
-open or update a marketplace **Verify / update existing plugin** request pinned
-to the exact passing commit. The marketplace snapshot remains the previous
-version until its maintainers approve and publish the update.
+Use a fresh, clean clone of
+`https://github.com/Sovcat0608/sovchat-omarchy-plugin`. The authoritative
+shared-file allowlist lives in `scripts/sync-marketplace-plugin.mjs`. Check or
+write that reviewed surface with:
+
+```text
+node scripts/sync-marketplace-plugin.mjs --target /path/to/sovchat-omarchy-plugin --check
+node scripts/sync-marketplace-plugin.mjs --target /path/to/sovchat-omarchy-plugin --write
+```
+
+The script validates the target plugin ID and official origin, refuses dirty
+shared files, never deletes files, and verifies the copied bytes. The two
+scripts below `bin/` intentionally remain mode `100755` in the official plugin
+repository even though the combined Windows source records them as `100644`.
+
+The public package owns its presentation and repository policy independently:
+`.gitattributes`, `README.md`, `preview.png`, `preview-source.svg`,
+`CHANGELOG.md`, `SECURITY.md`, package presentation tests, and any future issue
+templates or documentation images. Do not overwrite those files from this
+combined repository.
+
+After syncing, review `git diff --check`, run the official repository's
+security and presentation tests, commit and push, and wait for the exact commit
+to pass its Ubuntu workflow. Then update the existing marketplace
+**Verify / update existing plugin** request to that full commit SHA. The
+marketplace snapshot remains the previous version until its maintainers approve
+and publish the update.
 
 Never point the marketplace entry at this combined client-source repository.
 

@@ -32,6 +32,20 @@ class ReviewedSnapshotTests(unittest.TestCase):
         widget = (plugin_root / "BarWidget.qml").read_text(encoding="utf-8")
         panel = (plugin_root / "Panel.qml").read_text(encoding="utf-8")
 
+        self.assertEqual(manifest["id"], "com.sovchat.omarchy")
+        self.assertEqual(manifest["entryPoints"]["barWidget"], "BarWidget.qml")
+        description = manifest["description"].lower()
+        self.assertLessEqual(len(manifest["description"]), 500)
+        self.assertIn("voice rooms", description)
+        self.assertIn("text chat", description)
+        self.assertIn("screen and application sharing", description)
+        self.assertIn("omarchy", description)
+        self.assertIn("screen-share", manifest["barWidget"]["aliases"])
+        self.assertIn(
+            f'text: "PLUGIN {manifest["version"]}"',
+            panel,
+        )
+
         self.assertEqual(manifest["version"], "0.1.4")
         self.assertRegex(control, r'readonly CLIENT_VERSION="0\.4\.7"')
         self.assertRegex(control, r'readonly CLIENT_ARTIFACT="SovChat-Omarchy-0\.4\.7-x86_64\.AppImage"')

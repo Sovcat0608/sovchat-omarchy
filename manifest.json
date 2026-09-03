@@ -5,7 +5,7 @@
   "version": "0.1.4",
   "author": "SovChat",
   "license": "MIT",
-  "description": "An Omarchy-native launcher and status panel for the SovChat desktop client.",
+  "description": "Voice rooms, text chat, and screen and application sharing for Omarchy, with a native bar widget to install, launch, focus, and update the dedicated SovChat client.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,12 +14,13 @@
   },
   "barWidget": {
     "displayName": "SovChat",
-    "description": "See local client status, launch or focus SovChat, and open the web app.",
+    "description": "Install, launch, and monitor SovChat voice, chat, and screen sharing from the Omarchy bar.",
     "category": "Communication",
     "aliases": [
       "sovchat",
       "voice",
-      "chat"
+      "chat",
+      "screen-share"
     ],
     "allowMultiple": false,
     "defaultSection": "right",
