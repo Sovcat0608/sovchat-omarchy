@@ -4,7 +4,7 @@ import { constants as fsConstants } from "node:fs";
 import {
   access,
   chmod,
-  copyFile,
+  writeFile,
   mkdir,
   readFile,
 } from "node:fs/promises";
@@ -100,6 +100,22 @@ function runGit(root, arguments_) {
   return result.stdout.trim();
 }
 
+function readCommittedFile(sharedPath) {
+  const safeRoot = resolve(SOURCE_ROOT).replaceAll("\\", "/");
+  const result = spawnSync(
+    "git",
+    ["-c", "safe.directory=" + safeRoot, "-C", SOURCE_ROOT, "show", "HEAD:" + sharedPath],
+    { encoding: null, maxBuffer: 10 * 1024 * 1024 },
+  );
+
+  if (result.status !== 0) {
+    const detail = (result.stderr || result.stdout || "git failed").toString("utf8").trim();
+    fail("Unable to read committed shared file " + sharedPath + ": " + detail);
+  }
+
+  return result.stdout;
+}
+
 async function validateTarget(targetRoot) {
   if (normalizedPath(targetRoot) === normalizedPath(SOURCE_ROOT)) {
     fail("The marketplace target must not be the combined source repository.");
@@ -157,10 +173,9 @@ function shortDigest(bytes) {
 
 async function copySharedFiles(targetRoot) {
   for (const sharedPath of SHARED_FILES) {
-    const sourcePath = join(SOURCE_ROOT, sharedPath);
     const targetPath = join(targetRoot, sharedPath);
     await mkdir(dirname(targetPath), { recursive: true });
-    await copyFile(sourcePath, targetPath);
+    await writeFile(targetPath, readCommittedFile(sharedPath));
     await chmod(
       targetPath,
       EXECUTABLE_TARGETS.has(sharedPath) ? 0o755 : 0o644,
@@ -171,7 +186,7 @@ async function copySharedFiles(targetRoot) {
 async function findByteDrift(targetRoot) {
   const drift = [];
   for (const sharedPath of SHARED_FILES) {
-    const sourceBytes = await readFile(join(SOURCE_ROOT, sharedPath));
+    const sourceBytes = readCommittedFile(sharedPath);
     const targetBytes = await readIfPresent(join(targetRoot, sharedPath));
     if (!targetBytes || !sourceBytes.equals(targetBytes)) {
       drift.push({
